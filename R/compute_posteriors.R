@@ -35,3 +35,7 @@ multi_posterior_mean <- function(data, kern, mu_0, lambda_0) {
   }
   return(results)
 }
+
+
+
+

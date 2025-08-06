@@ -2,7 +2,7 @@
 % Please edit documentation in R/simu_db.R
 \name{simu_db}
 \alias{simu_db}
-\title{Generate a synthetic dataset tailored for ProteoBayes}
+\title{Generate a Synthetic Dataset Tailored for ProteoBayes}
 \usage{
 simu_db(
   nb_peptide = 5,
@@ -18,32 +18,22 @@ simu_db(
 
 \item{nb_group}{An integer, indicating the number of groups/conditions.}
 
-\item{nb_sample}{An integer, indicating the number of samples in the data
-for each peptide (i.e the repetitions of the same experiment).}
+\item{nb_sample}{An integer, indicating the number of samples in the data for each peptide (i.e., the repetitions of the same experiment).}
 
-\item{range_peptide}{A 2-sized vector, indicating the range of values from
-which to pick a mean value for each peptide.}
+\item{range_peptide}{A 2-sized vector, indicating the range of values from which to pick a mean value for each peptide.}
 
-\item{diff_group}{A number, indicating the mean difference between
-consecutive groups}
+\item{diff_group}{A number, indicating the mean difference between consecutive groups.}
 
-\item{var_sample}{A number, indicating the noise variance for each new
-sample of a peptide.}
+\item{var_sample}{A number, indicating the noise variance for each new sample of a peptide.}
 }
 \value{
 A full dataset of synthetic data.
 }
 \description{
-Simulate a complete training dataset, which may be representative of various
-applications. Several flexible arguments allow adjustment of the number of
-peptides, of groups, and samples in each experiment. The values of several
-parameters controlling the data generation process can be modified.
+Simulate a complete training dataset, which may be representative of various applications.
+Several flexible arguments allow adjustment of the number of peptides, groups, and samples in each experiment.
+The values of several parameters controlling the data generation process can be modified.
 }
 \examples{
-
-## Generate a dataset with 5 peptides in each of the 2 groups, observed for
-##  3 different samples
-data = simu_db(nb_peptide = 5, nb_group = 2, nb_sample = 3)
-
-
+data <- simu_db(nb_peptide = 5, nb_group = 2, nb_sample = 3)
 }
