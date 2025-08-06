@@ -683,3 +683,124 @@ setMethod("gt_HPs", "MaternKernel52",
           function(obj) {
             list(length_scale_mat = obj@length_scale_mat)
           })
+
+
+
+
+# OPITM_HP ----------------------------------------------------------------
+
+
+
+#' @noRd
+chol_inv_jitter <- function(mat, pen_diag) {
+  diag(mat) <- diag(mat) + pen_diag
+  tryCatch(
+    {
+      chol_mat <- chol(mat)
+      inv_mat <- chol2inv(chol_mat)
+      inv_mat
+    },
+    error = function(e) {
+      chol_inv_jitter(mat, 10 * pen_diag)
+    }
+  )
+}
+
+#' @noRd
+dmnorm <- function(x, mu, inv_Sigma, log = FALSE) {
+  if (is.vector(x)) {
+    x <- t(as.matrix(x))
+  }
+  n <- length(mu)
+  if (is.vector(mu)) {
+    p <- length(mu)
+    if (is.matrix(x)) {
+      mu <- matrix(rep(mu, nrow(x)), ncol = p, byrow = TRUE)
+    }
+  } else {
+    p <- ncol(mu)
+  }
+
+  z <- t(x - mu)
+  logdetS <- try(-determinant(inv_Sigma, logarithm = TRUE)$modulus,
+                 silent = TRUE)
+  attributes(logdetS) <- NULL
+
+  ssq <- t(z) %*% inv_Sigma %*% z
+  as.vector(loglik <- (-(n * (log(2 * pi)) + logdetS + ssq) / 2))
+
+  if (log) {
+    return(loglik)
+  } else {
+    return(exp(loglik))
+  }
+}
+
+#' @noRd
+sum_logGaussian <- function(hp, db, mean, kern, post_cov, pen_diag) {
+  kern <- set_hyperparameters(kern, hp)
+  input <- db$Input
+  input <- as.matrix(input)
+  cov <- pairwise_kernel(kern, input, input) + post_cov
+
+  inv <- chol_inv_jitter(cov, pen_diag = pen_diag)
+
+  log_likelihoods <- dmnorm(db$Output, mean, inv, log = TRUE)
+  neg_sum_log_likelihood <- -sum(log_likelihoods)
+  return(neg_sum_log_likelihood)
+}
+
+#' @noRd
+gr_sum_logGaussian <- function(hp, db, mean, kern, post_cov, pen_diag) {
+  kern <- set_hyperparameters(kern, hp)
+  list_hp <- get_hyperparameter_names(kern)
+
+  output <- db$Output
+  input <- db$Input
+  input <- as.matrix(input)
+
+  cov <- pairwise_kernel(kern, input, input) + post_cov
+
+  inv <- chol_inv_jitter(cov, pen_diag = pen_diag)
+
+  prod_inv <- inv %*% (output - mean)
+  common_term <- prod_inv %*% t(prod_inv) - inv
+
+  floop <- function(hp_name) {
+    kern_deriv <- kernel_deriv(kern, input, input, hp_name)
+    grad_term <- sum(diag((-0.5 * (common_term %*% kern_deriv))))
+  }
+
+  sapply(list_hp, floop)
+}
+
+#' Optimize Hyperparameters for a kernel
+#'
+#' This function optimizes hyperparameters using the L-BFGS-B optimization method.
+#'
+#' @param hp A vector of initial hyperparameters to be optimized.
+#' @param db The dataset used for optimization.
+#' @param mean The mean function
+#' @param kern The kernel function
+#' @param post_cov The posterior covariance function.
+#' @param pen_diag A penalty term added to the diagonal of the covariance matrix for numerical stability.
+#' @param verbose A logical value indicating whether to return the full optimization result or just the optimized parameters. Defaults to FALSE.
+#'
+#' @return If `verbose` is FALSE, a vector of optimized hyperparameters; otherwise, the full result from the `optim` function.
+#' @export
+optim_hp <- function(hp, db, mean, kern, post_cov, pen_diag, verbose = FALSE) {
+  # Call the optimization function
+  result <- stats::optim(
+    par = hp,
+    fn = function(hp) sum_logGaussian(hp, db, mean, kern, post_cov, pen_diag),
+    gr = function(hp) gr_sum_logGaussian(hp, db, mean, kern, post_cov, pen_diag),
+    method = "L-BFGS-B",
+    control = list(factr = 1e7, maxit = 1000)
+  )
+
+  if (!verbose) {
+    return(result$par)
+  } else {
+    return(result)
+  }
+}
