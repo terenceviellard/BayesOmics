@@ -9,7 +9,7 @@ test_that("simu_db generates correct dataset structure", {
   expect_equal(nrow(data), 5 * 2 * 5)  # nb_peptide * nb_group * nb_sample
 
   # Check column names
-  expect_equal(colnames(data), c("Peptide", "Group", "Sample", "Output"))
+  expect_equal(colnames(data), c("ID", "Group", "Sample","Input", "Output"))
 
   # Check if the Output column has the correct length
   expect_equal(nrow(data), length(data$Output))
@@ -21,7 +21,7 @@ test_that("simu_db generates correct dataset structure", {
 
 test_that("simu_db respects custom parameters", {
   # Test with custom parameters
-  custom_data <- simu_db(nb_peptide = 3, nb_group = 2, nb_sample = 4, range_peptide = c(10, 20), diff_group = 2, var_sample = 1)
+  custom_data <- simu_db(nb_id = 3, nb_group = 2, nb_sample = 4, range_output = c(10, 20), diff_group = 2, var_sample = 1)
 
   # Check if the output is a data frame
   expect_s3_class(custom_data, "data.frame")
