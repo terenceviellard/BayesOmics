@@ -38,7 +38,7 @@ library(BayesOmics)
 ```
 
 ```{r}
-data = simu_db()
+data <- simu_db()
 head(data)
 ```
 ```{r}
@@ -63,12 +63,12 @@ where:
 Then we need to optimize Hps  \( \sigma^2 \)  and  \( \ell \) : 
 
 ```{r eval=FALSE, include=TRUE}
-SEKernel = new("SEKernel")
+SEKernel <- new("SEKernel")
 
 hp <- c(1.0, 1.0)
-SEKernel = set_hyperparameters(SEKernel,hp)
+SEKernel <- set_hyperparameters(SEKernel, hp)
 
-n=dim(data)[1]
+n <- dim(data)[1]
 
 mean_nul <- rep(0, n)
 post_cov_nul <- diag(0.1, n)
@@ -89,18 +89,18 @@ opt$par
 
 We create a new kernel with optimal HpS
 ```{r}
-#En attendant de reparer optimHP :
-SEKernel = new("SEKernel")
-opt=list()
-opt$par= c(1,1)
-SEKernelopt = set_hyperparameters(SEKernel, opt$par)
+# En attendant de reparer optimHP :
+SEKernel <- new("SEKernel")
+opt <- list()
+opt$par <- c(1, 1)
+SEKernelopt <- set_hyperparameters(SEKernel, opt$par)
 ```
 
 
 ### Posterior 
 
 ```{r}
-posterior = multi_posterior_mean(data, SEKernelopt)
+posterior <- multi_posterior_mean(data, SEKernelopt)
 ```
 
 ### DIfferential analtsis 

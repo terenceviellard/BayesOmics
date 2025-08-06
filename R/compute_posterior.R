@@ -16,7 +16,7 @@ multi_posterior_mean <- function(data, kern, mu_0 = 1, lambda_0 = 1) {
   }
 
   # Get unique groups and create group names
-  groups <- unique(data$'Group')
+  groups <- unique(data$"Group")
   group_names <- paste0("Group", seq_along(groups))
 
   results <- list()
@@ -24,7 +24,7 @@ multi_posterior_mean <- function(data, kern, mu_0 = 1, lambda_0 = 1) {
   for (i in seq_along(groups)) {
     group <- groups[i]
     group_name <- group_names[i]
-    group_df <- subset(data, data$'Group' == group)
+    group_df <- subset(data, data$"Group" == group)
     all_peptides <- unique(group_df$ID)
     sum_outputs <- tapply(group_df$Output, group_df$ID, sum, na.rm = TRUE)
     lengths <- tapply(group_df$Output, group_df$ID, length)

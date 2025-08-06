@@ -27,10 +27,9 @@ simu_db <- function(
     range_output = c(0, 50),
     range_input = c(0, 50),
     diff_group = 3,
-    var_sample = 2
-) {
+    var_sample = 2) {
   db <- data.frame(
-    ID = rep(paste0('ID_', 1:nb_id), each = nb_group * nb_sample),
+    ID = rep(paste0("ID_", 1:nb_id), each = nb_group * nb_sample),
     Group = rep(rep(1:nb_group, each = nb_sample), nb_id),
     Sample = rep(1:nb_sample, nb_group * nb_id),
     Input = runif(nb_group * nb_id, range_input[1], range_input[2]),
@@ -47,4 +46,3 @@ simu_db <- function(
 
   return(db)
 }
-

@@ -31,15 +31,15 @@ library(BayesOmics)
 ```
 
 ``` r
-data = simu_db()
+data <- simu_db()
 head(data)
-#>     ID Group Sample    Input   Output
-#> 1 ID_1     1      1 26.23990 20.07007
-#> 2 ID_1     1      2 40.93217 44.58507
-#> 3 ID_1     1      3 30.26275 10.72115
-#> 4 ID_1     1      4 42.15485 14.06701
-#> 5 ID_1     1      5 25.88363 14.82411
-#> 6 ID_1     2      1  7.29474 20.22349
+#>     ID Group Sample     Input     Output
+#> 1 ID_1     1      1 26.548430  6.4503764
+#> 2 ID_1     1      2 22.573584 10.1725170
+#> 3 ID_1     1      3 49.331077  7.0066756
+#> 4 ID_1     1      4  9.854966 45.4006208
+#> 5 ID_1     1      5 13.655596 18.4826452
+#> 6 ID_1     2      1  1.726766  0.3239422
 ```
 
 ``` r
@@ -63,12 +63,12 @@ scale, - $x$ and $x'$ are input vectors.
 Then we need to optimize Hps $\sigma^2$ and $\ell$ :
 
 ``` r
-SEKernel = new("SEKernel")
+SEKernel <- new("SEKernel")
 
 hp <- c(1.0, 1.0)
-SEKernel = set_hyperparameters(SEKernel,hp)
+SEKernel <- set_hyperparameters(SEKernel, hp)
 
-n=dim(data)[1]
+n <- dim(data)[1]
 
 mean_nul <- rep(0, n)
 post_cov_nul <- diag(0.1, n)
@@ -90,24 +90,24 @@ opt$par
 We create a new kernel with optimal HpS
 
 ``` r
-#En attendant de reparer optimHP :
-SEKernel = new("SEKernel")
-opt=list()
-opt$par= c(1,1)
-SEKernelopt = set_hyperparameters(SEKernel, opt$par)
+# En attendant de reparer optimHP :
+SEKernel <- new("SEKernel")
+opt <- list()
+opt$par <- c(1, 1)
+SEKernelopt <- set_hyperparameters(SEKernel, opt$par)
 ```
 
 ### Posterior
 
 ``` r
-posterior = multi_posterior_mean(data, SEKernelopt)
+posterior <- multi_posterior_mean(data, SEKernelopt)
 ```
 
 ### DIfferential analtsis
 
 ``` r
 calculate_group_overlaps(posterior)
-#>           Group1    Group2
-#> Group1 1.0000000 0.4435245
-#> Group2 0.4435245 1.0000000
+#>          Group1   Group2
+#> Group1 1.000000 0.452531
+#> Group2 0.452531 1.000000
 ```
