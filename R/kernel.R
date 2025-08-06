@@ -26,30 +26,35 @@ get_hyperparameter_values <- function(kernel) {
 
 # Fonction pour mettre à jour les hyperparamètres
 set_hyperparameters <- function(kernel, values) {
-  # Obtenez les noms des slots du noyau
-  slot_names <- slotNames(kernel)
-  # Vérifiez si les valeurs sont nommées
+  slot_names <- get_hyperparameter_names(kernel)
+
+  # Check if the values are named
   if (is.null(names(values))) {
-    # Si les valeurs ne sont pas nommées, utilisez les noms des slots du noyau
     if (length(values) != length(slot_names)) {
-      stop("Le nombre de valeurs fournies ne correspond pas au nombre de slots du noyau.")
+      stop("The number of values provided does not match the number of slots in the kernel.")
     }
     names(values) <- slot_names
   } else {
-    # Vérifiez que les noms fournis correspondent aux slots du noyau
     for (name in names(values)) {
       if (!(name %in% slot_names)) {
-        stop(paste("Le slot", name, "n'existe pas dans le noyau."))
+        stop(paste("The slot", name, "does not exist in the kernel."))
       }
     }
   }
-  # Mettre à jour les hyperparamètres
+
+  # Update the hyperparameters
   for (name in names(values)) {
     value <- values[[name]]
     if (is(kernel, "SumKernel") || is(kernel, "ProductKernel")) {
-      for (k in kernel@kernels) {
-        if (name %in% slotNames(k)) {
+      for (i in seq_along(kernel@kernels)) {
+        k <- kernel@kernels[[i]]
+        if (name %in% get_hyperparameter_names(k)) {
+          # Directly set the slot value if the hyperparameter name exists
           slot(k, name) <- value
+
+          # Update the kernel in the composite kernel
+          kernel@kernels[[i]] <- k
+
         }
       }
     } else {
@@ -58,9 +63,11 @@ set_hyperparameters <- function(kernel, values) {
       }
     }
   }
-  # Retourner le noyau avec les hyperparamètres mis à jour
+
+
   return(kernel)
 }
+
 
 # AbstractKernel ----------------------------------------------------------
 setClass("AbstractKernel",
@@ -693,7 +700,9 @@ setMethod("gt_HPs", "MaternKernel52",
 
 #' @noRd
 chol_inv_jitter <- function(mat, pen_diag) {
+
   diag(mat) <- diag(mat) + pen_diag
+
   tryCatch(
     {
       chol_mat <- chol(mat)
@@ -706,28 +715,52 @@ chol_inv_jitter <- function(mat, pen_diag) {
   )
 }
 
+
 #' @noRd
 dmnorm <- function(x, mu, inv_Sigma, log = FALSE) {
+  # Ensure x is a matrix
   if (is.vector(x)) {
-    x <- t(as.matrix(x))
+    x <- matrix(x, nrow = 1)
   }
-  n <- length(mu)
+
+  n <- nrow(x)
+  p <- ncol(x)
+
+  # Ensure mu is compatible with x
   if (is.vector(mu)) {
-    p <- length(mu)
-    if (is.matrix(x)) {
-      mu <- matrix(rep(mu, nrow(x)), ncol = p, byrow = TRUE)
+    if (length(mu) != p) {
+      stop("The length of mu must match the number of columns in x.")
+    }
+    mu <- matrix(rep(mu, n), ncol = p, byrow = TRUE)
+  } else if (is.matrix(mu)) {
+    if (ncol(mu) != p || nrow(mu) != n) {
+      stop("The dimensions of mu must match the dimensions of x.")
     }
   } else {
-    p <- ncol(mu)
+    stop("mu must be a vector or a matrix.")
   }
 
-  z <- t(x - mu)
-  logdetS <- try(-determinant(inv_Sigma, logarithm = TRUE)$modulus,
-                 silent = TRUE)
+  # Compute z as the difference between x and mu
+  z <- x - mu
+
+
+  # Ensure dimensions are compatible for multiplication
+  if (ncol(z) != nrow(inv_Sigma)) {
+    if (nrow(z) == nrow(inv_Sigma)) {
+      # Transpose z if necessary
+      z <- t(z)
+    } else {
+      stop("The number of columns in z must match the number of rows in inv_Sigma.")
+    }
+  }
+
+  logdetS <- try(-determinant(inv_Sigma, logarithm = TRUE)$modulus, silent = TRUE)
   attributes(logdetS) <- NULL
 
-  ssq <- t(z) %*% inv_Sigma %*% z
-  as.vector(loglik <- (-(n * (log(2 * pi)) + logdetS + ssq) / 2))
+  # Perform the multiplication correctly
+  ssq <- sum((z %*% inv_Sigma) * z)
+
+  loglik <- as.vector(-(n * log(2 * pi) + logdetS + ssq) / 2)
 
   if (log) {
     return(loglik)
@@ -736,19 +769,56 @@ dmnorm <- function(x, mu, inv_Sigma, log = FALSE) {
   }
 }
 
+
+
+
+
+
 #' @noRd
 sum_logGaussian <- function(hp, db, mean, kern, post_cov, pen_diag) {
   kern <- set_hyperparameters(kern, hp)
   input <- db$Input
   input <- as.matrix(input)
   cov <- pairwise_kernel(kern, input, input) + post_cov
-
   inv <- chol_inv_jitter(cov, pen_diag = pen_diag)
+
+  # Ensure db$Output is a matrix or data frame
+  if (!is.matrix(db$Output) && !is.data.frame(db$Output)) {
+    # If db$Output is a vector, convert it to a matrix with a single column
+    if (is.vector(db$Output)) {
+      db$Output <- matrix(db$Output, ncol = 1)
+    } else {
+      stop("db$Output must be a matrix, data frame, or vector.")
+    }
+  }
+
+  ncol_output <- ncol(db$Output)
+  if (ncol_output == 0) {
+    stop("db$Output must have at least one column.")
+  }
+
+  # Ensure mean is compatible with the number of columns in db$Output
+  if (is.vector(mean)) {
+    if (length(mean) == 1) {
+      mean <- rep(mean, times = ncol_output)
+    } else if (length(mean) != ncol_output) {
+      stop("The length of mean must match the number of columns in db$Output.")
+    }
+  } else if (is.matrix(mean)) {
+    if (ncol(mean) != ncol_output || nrow(mean) != nrow(db$Output)) {
+      stop("The dimensions of mean must match the dimensions of db$Output.")
+    }
+  } else {
+    stop("mean must be a vector or a matrix.")
+  }
 
   log_likelihoods <- dmnorm(db$Output, mean, inv, log = TRUE)
   neg_sum_log_likelihood <- -sum(log_likelihoods)
   return(neg_sum_log_likelihood)
 }
+
+
+
 
 #' @noRd
 gr_sum_logGaussian <- function(hp, db, mean, kern, post_cov, pen_diag) {
@@ -797,10 +867,11 @@ optim_hp <- function(hp, db, mean, kern, post_cov, pen_diag, verbose = FALSE) {
     method = "L-BFGS-B",
     control = list(factr = 1e7, maxit = 1000)
   )
-
   if (!verbose) {
     return(result$par)
   } else {
     return(result)
+
   }
+
 }
