@@ -19,8 +19,6 @@
 #' @return  A full dataset of synthetic data.
 #' @export
 #'
-#' @importFrom rlang .data
-#'
 #' @examples
 #'
 #' ## Generate a dataset with 5 peptides in each of the 2 groups, observed for
@@ -44,13 +42,13 @@ simu_db <- function(
   )
 
   db$Output <- unlist(by(db, db$Peptide, function(x) {
-    runif(1, range_peptide[1], range_peptide[2])
+    stats::runif(1, range_peptide[1], range_peptide[2])
   }))
 
   db$Output <- unlist(by(db, db$Group, function(x) {
     x$Output + diff_group * x$Group[1]
   }))
-  db$Output <- db$Output + rnorm(nrow(db), 0, var_sample)
+  db$Output <- db$Output + stats::rnorm(nrow(db), 0, var_sample)
 
   return(db)
 }
