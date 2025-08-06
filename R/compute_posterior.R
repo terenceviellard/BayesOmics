@@ -9,32 +9,41 @@
 #' @param mu_0 Prior mean parameter.
 #' @param lambda_0 Prior precision parameter.
 #' @return A list of results for each group, containing the posterior means and kernel matrices.
-multi_posterior_mean <- function(data, kern, mu_0, lambda_0) {
-
+#' @export
+multi_posterior_mean <- function(data, kern, mu_0 = 1, lambda_0 = 1) {
   if (!"Group" %in% names(data)) {
     stop("The 'Group' column is not found in the input data.")
   }
 
-  groups <- unique(data$Group)
+  # Get unique groups and create group names
+  groups <- unique(data$'Group')
+  group_names <- paste0("Group", seq_along(groups))
+
   results <- list()
 
-  for (group in groups) {
-    group_df <- subset(data, data$Group == group)
+  for (i in seq_along(groups)) {
+    group <- groups[i]
+    group_name <- group_names[i]
+    group_df <- subset(data, data$'Group' == group)
     all_peptides <- unique(group_df$ID)
     sum_outputs <- tapply(group_df$Output, group_df$ID, sum, na.rm = TRUE)
     lengths <- tapply(group_df$Output, group_df$ID, length)
     muk_vector <- (lambda_0 * mu_0 + sum_outputs) / (lengths + lambda_0)
     names(muk_vector) <- all_peptides
+
     if (nrow(group_df) > 0) {
       inputs <- as.matrix(group_df$Input)
       sigmak <- pairwise_kernel(kern, inputs, inputs) / (nrow(group_df) + lambda_0)
     } else {
       sigmak <- NA
     }
-    results[[group]] <- list(muk = muk_vector, sigmak = sigmak)
+
+    results[[group_name]] <- list(muk = muk_vector, sigmak = sigmak)
   }
+
   return(results)
 }
+
 
 
 

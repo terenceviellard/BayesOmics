@@ -4,7 +4,7 @@
 \alias{multi_posterior_mean}
 \title{Compute Posterior Means for Different Groups}
 \usage{
-multi_posterior_mean(data, kern, mu_0, lambda_0)
+multi_posterior_mean(data, kern, mu_0 = 1, lambda_0 = 1)
 }
 \arguments{
 \item{data}{A data frame containing the data to be analyzed. Must include columns 'Group', 'ID', 'Output', and 'Input'.}

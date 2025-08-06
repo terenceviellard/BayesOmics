@@ -4,7 +4,7 @@
 \alias{calculate_group_overlaps}
 \title{Compute Overlapping Coefficient}
 \usage{
-calculate_group_overlaps(results, n)
+calculate_group_overlaps(results, n = 1000)
 }
 \arguments{
 \item{results}{A list containing parameters of the posterior distribution for each group.}

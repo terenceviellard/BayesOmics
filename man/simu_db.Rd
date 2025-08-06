@@ -5,35 +5,38 @@
 \title{Generate a Synthetic Dataset Tailored for ProteoBayes}
 \usage{
 simu_db(
-  nb_peptide = 5,
+  nb_id = 5,
   nb_group = 2,
   nb_sample = 5,
-  range_peptide = c(0, 50),
+  range_output = c(0, 50),
+  range_input = c(0, 50),
   diff_group = 3,
   var_sample = 2
 )
 }
 \arguments{
-\item{nb_peptide}{An integer, indicating the number of peptides in the data.}
+\item{nb_id}{An integer, indicating the number of id in the data.}
 
 \item{nb_group}{An integer, indicating the number of groups/conditions.}
 
-\item{nb_sample}{An integer, indicating the number of samples in the data for each peptide (i.e., the repetitions of the same experiment).}
+\item{nb_sample}{An integer, indicating the number of samples in the data for each id (i.e., the repetitions of the same experiment).}
 
-\item{range_peptide}{A 2-sized vector, indicating the range of values from which to pick a mean value for each peptide.}
+\item{range_output}{A 2-sized vector, indicating the range of values for output from which to pick a mean value for each id}
+
+\item{range_input}{A 2-sized vector, indicating the range of values for input from which to pick a mean value for each id}
 
 \item{diff_group}{A number, indicating the mean difference between consecutive groups.}
 
-\item{var_sample}{A number, indicating the noise variance for each new sample of a peptide.}
+\item{var_sample}{A number, indicating the noise variance for each new sample of a id}
 }
 \value{
 A full dataset of synthetic data.
 }
 \description{
 Simulate a complete training dataset, which may be representative of various applications.
-Several flexible arguments allow adjustment of the number of peptides, groups, and samples in each experiment.
+Several flexible arguments allow adjustment of the number of id, groups, and samples in each experiment.
 The values of several parameters controlling the data generation process can be modified.
 }
 \examples{
-data <- simu_db(nb_peptide = 5, nb_group = 2, nb_sample = 3)
+data <- simu_db()
 }

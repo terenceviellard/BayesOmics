@@ -12,7 +12,7 @@
 #' @return A matrix with the coefficient for each group.
 #' @export
 #'
-calculate_group_overlaps <- function(results, n) {
+calculate_group_overlaps <- function(results, n=1000) {
   group_names <- names(results)
   num_groups <- length(group_names)
   overlap_matrix <- matrix(NA, nrow = num_groups, ncol = num_groups)

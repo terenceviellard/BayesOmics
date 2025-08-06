@@ -11,7 +11,7 @@
 #' @param nb_group An integer, indicating the number of groups/conditions.
 #' @param nb_sample An integer, indicating the number of samples in the data for each id (i.e., the repetitions of the same experiment).
 #' @param range_output A 2-sized vector, indicating the range of values for output from which to pick a mean value for each id
-#' @param range_output A 2-sized vector, indicating the range of values for input from which to pick a mean value for each id
+#' @param range_input A 2-sized vector, indicating the range of values for input from which to pick a mean value for each id
 #' @param diff_group A number, indicating the mean difference between consecutive groups.
 #' @param var_sample A number, indicating the noise variance for each new sample of a id
 #'

@@ -24,7 +24,18 @@ get_hyperparameter_values <- function(kernel) {
   unlist(hps)
 }
 
-# Fonction pour mettre à jour les hyperparamètres
+
+#' @title Replace Hps Kernels
+#'
+#' @description
+#' Update HPs of complex kernels
+#'
+#' @param kernel Previous kernel
+#' @param values New HPs
+#'
+#' @return A kernel with new HPs
+#' @export
+#'
 set_hyperparameters <- function(kernel, values) {
   slot_names <- get_hyperparameter_names(kernel)
 
