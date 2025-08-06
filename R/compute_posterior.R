@@ -19,7 +19,7 @@ multi_posterior_mean <- function(data, kern, mu_0, lambda_0) {
   results <- list()
 
   for (group in groups) {
-    group_df <- subset(data, Group == group)
+    group_df <- subset(data, data$Group == group)
     all_peptides <- unique(group_df$ID)
     sum_outputs <- tapply(group_df$Output, group_df$ID, sum, na.rm = TRUE)
     lengths <- tapply(group_df$Output, group_df$ID, length)
@@ -37,3 +37,53 @@ multi_posterior_mean <- function(data, kern, mu_0, lambda_0) {
 }
 
 
+
+
+#' @title Sample from a Normal multivariate distribution
+#'
+#' @description
+#' Sample
+#'
+#' @param results  A list containing parameters of the posterior distribution for each group.
+#' Each group should have elements `muk` (mean) and `sigmak` (covariance matrix). (from multi_posterior_mean)
+#' @param n A number indicating the number of samples
+#'
+#' @return A list of sampled values for each group.
+#' @export
+#'
+sample_posterior <- function(results, n) {
+  group_names <- names(results)
+  samples_list <- list()
+
+  for (group in group_names) {
+    group_result <- results[[group]]
+
+    # Check if muk and sigmak are present
+    if (!all(c("muk", "sigmak") %in% names(group_result))) {
+      stop("Each group in results must contain 'muk' and 'sigmak'.")
+    }
+
+    # Ensure sigmak is a matrix
+    if (!is.matrix(group_result$sigmak)) {
+      stop("sigmak must be a matrix.")
+    }
+
+    # Number of variables to sample
+    num_vars <- length(group_result$muk)
+
+    # Sample from the posterior distribution
+    samples_matrix <- matrix(nrow = n, ncol = num_vars)
+    for (i in 1:num_vars) {
+      samples_matrix[, i] <- rnorm(n, mean = group_result$muk[i], sd = sqrt(group_result$sigmak[i, i]))
+    }
+
+    # Convert the matrix to a data frame
+    samples_df <- as.data.frame(samples_matrix)
+    names(samples_df) <- paste0("Var", 1:num_vars)
+
+    # Store the data frame in the list
+    samples_list[[group]] <- samples_df
+  }
+
+  return(samples_list)
+}
