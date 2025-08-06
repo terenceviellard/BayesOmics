@@ -39,3 +39,37 @@ multi_posterior_mean <- function(data, kern, mu_0, lambda_0) {
 
 
 
+#' @title Sample from a Normal multivariate distribution
+#'
+#' @description
+#' Sample
+#'
+#' @param results  A list containing parameters of the posterior distribution for each group.
+#' Each group should have elements `muk` (mean) and `sigmak` (covariance matrix). (from multi_posterior_mean)
+#' @param n A number indicating the number of samples
+#'
+#' @return A list of sampled values for each group.
+#' @export
+#'
+sample_posterior <- function(results, n) {
+  group_names <- names(results)
+  num_groups <- length(group_names)
+
+  # Initialize a list to store samples for each group
+  samples_list <- list()
+
+  for (group in group_names) {
+    # Check if muk and sigmak are present
+    if (!all(c("muk", "sigmak") %in% names(results[[group]]))) {
+      stop("Each group in results must contain 'muk' and 'sigmak'.")
+    }
+
+    # Sample from the posterior distribution
+    samples <- rnorm(n, mean = results[[group]]$muk, sd = sqrt(diag(results[[group]]$sigmak)))
+
+    # Store the samples in the list
+    samples_list[[group]] <- samples
+  }
+
+  return(samples_list)
+}
