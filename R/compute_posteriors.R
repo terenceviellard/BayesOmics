@@ -1,4 +1,19 @@
+#' Compute Posterior Means for Different Groups
+#'
+#' This function computes the posterior means for different groups within a dataset.
+#' It expects the input data frame to contain a column named 'Group' that identifies
+#' the groups, as well as columns 'ID', 'Output', and 'Input'.
+#'
+#' @param data A data frame containing the data to be analyzed. Must include columns 'Group', 'ID', 'Output', and 'Input'.
+#' @param kern A kernel function or object used to compute pairwise kernels.
+#' @param mu_0 Prior mean parameter.
+#' @param lambda_0 Prior precision parameter.
+#' @return A list of results for each group, containing the posterior means and kernel matrices.
 multi_posterior_mean <- function(data, kern, mu_0, lambda_0) {
+
+  if (!"Group" %in% names(data)) {
+    stop("The 'Group' column is not found in the input data.")
+  }
 
   groups <- unique(data$Group)
   results <- list()
