@@ -17,8 +17,8 @@
 A matrix representing the pairwise kernel evaluations.
 }
 \description{
-Computes the pairwise kernel matrix for a \code{MaternKernel12} object using the Matern kernel formula with \(\nu = 1/2\).
-Let \(\eqn{\ell \in \mathbb{R}_{+}^{*}}\) and \(\eqn{\sigma^2 \in \mathbb{R}_{+}}\). Consider the Matern Kernel with \(\nu = 1/2\) defined by:
+Computes the pairwise kernel matrix for a \code{MaternKernel12} object using the Matern kernel formula with \eqn{\nu = 1/2}.
+Let \(\eqn{\ell \in \mathbb{R}_{+}^{*}}\) and \(\eqn{\sigma^2 \in \mathbb{R}_{+}}\). Consider the Matern Kernel with \eqn{\nu = 1/2} defined by:
 
 \eqn{K_{\text{Mat}_{\nu = \frac{1}{2}}}(x, x') = \sigma^2 \cdot \exp\left(-\frac{\|x - x'\|^2}{\ell}\right)}
 }

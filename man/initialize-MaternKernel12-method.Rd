@@ -9,7 +9,7 @@
 \arguments{
 \item{.Object}{An object of class \code{MaternKernel12}.}
 
-\item{length_scale_mat}{A numeric value for the length scale parameter. Defaults to a random uniform value between 0 and 3.}
+\item{length_scale_mat}{A numeric value for the length scale parameter.}
 }
 \value{
 An initialized object of class \code{MaternKernel12}.

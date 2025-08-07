@@ -5,7 +5,7 @@
 \alias{MaternKernel12-class}
 \title{Matern Kernel 1/2 Class}
 \description{
-A class representing a Matern kernel with smoothness parameter \mjdeqn{\nu}{ASCII representation} = 1/2 , which inherits from the \code{AbstractKernel} class.
+A class representing a Matern kernel with smoothness parameter \eqn{\nu} = 1/2 , which inherits from the \code{AbstractKernel} class.
 This kernel is a type of covariance function used in Gaussian process regression.
 }
 \section{Slots}{

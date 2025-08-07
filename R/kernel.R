@@ -1260,9 +1260,9 @@ setClass("PeriodicKernel",
 #' Initializes an instance of the `PeriodicKernel` class with specified variance, length scale, and period parameters.
 #'
 #' @param .Object An object of class `PeriodicKernel`.
-#' @param variance_per A numeric value for the signal variance. Defaults to a random uniform value between 0 and 3.
-#' @param length_scale_per A numeric value for the length scale parameter. Defaults to a random uniform value between 0 and 3.
-#' @param period A numeric value for the period. Defaults to a random uniform value between 0 and \(2\pi\).
+#' @param variance_per A numeric value for the signal variance.
+#' @param length_scale_per A numeric value for the length scale parameter.
+#' @param period A numeric value for the period.
 #' @return An initialized object of class `PeriodicKernel`.
 #' @export
 setMethod(
@@ -1383,7 +1383,7 @@ setMethod(
 # MaternKernel 1/2 ------------------------------------------------------------
 #' @title Matern Kernel 1/2 Class
 #' @description
-#' A class representing a Matern kernel with smoothness parameter \mjdeqn{\nu}{ASCII representation} = 1/2 , which inherits from the `AbstractKernel` class.
+#' A class representing a Matern kernel with smoothness parameter \eqn{\nu} = 1/2 , which inherits from the `AbstractKernel` class.
 #' This kernel is a type of covariance function used in Gaussian process regression.
 #'
 #' @slot length_scale_mat A numeric value representing the length scale parameter.
@@ -1398,7 +1398,7 @@ setClass("MaternKernel12",
 #' Initializes an instance of the `MaternKernel12` class with a specified length scale parameter.
 #'
 #' @param .Object An object of class `MaternKernel12`.
-#' @param length_scale_mat A numeric value for the length scale parameter. Defaults to a random uniform value between 0 and 3.
+#' @param length_scale_mat A numeric value for the length scale parameter.
 #' @return An initialized object of class `MaternKernel12`.
 #' @export
 setMethod(
@@ -1411,8 +1411,8 @@ setMethod(
 
 #' @title Pairwise Kernel Method for MaternKernel12
 #' @description
-#' Computes the pairwise kernel matrix for a `MaternKernel12` object using the Matern kernel formula with \(\nu = 1/2\).
-#' Let \(\eqn{\ell \in \mathbb{R}_{+}^{*}}\) and \(\eqn{\sigma^2 \in \mathbb{R}_{+}}\). Consider the Matern Kernel with \(\nu = 1/2\) defined by:
+#' Computes the pairwise kernel matrix for a `MaternKernel12` object using the Matern kernel formula with \eqn{\nu = 1/2}.
+#' Let \(\eqn{\ell \in \mathbb{R}_{+}^{*}}\) and \(\eqn{\sigma^2 \in \mathbb{R}_{+}}\). Consider the Matern Kernel with \eqn{\nu = 1/2} defined by:
 #'
 #' \eqn{K_{\text{Mat}_{\nu = \frac{1}{2}}}(x, x') = \sigma^2 \cdot \exp\left(-\frac{\|x - x'\|^2}{\ell}\right)}
 #'

@@ -9,11 +9,11 @@
 \arguments{
 \item{.Object}{An object of class \code{PeriodicKernel}.}
 
-\item{variance_per}{A numeric value for the signal variance. Defaults to a random uniform value between 0 and 3.}
+\item{variance_per}{A numeric value for the signal variance.}
 
-\item{length_scale_per}{A numeric value for the length scale parameter. Defaults to a random uniform value between 0 and 3.}
+\item{length_scale_per}{A numeric value for the length scale parameter.}
 
-\item{period}{A numeric value for the period. Defaults to a random uniform value between 0 and \(2\pi\).}
+\item{period}{A numeric value for the period.}
 }
 \value{
 An initialized object of class \code{PeriodicKernel}.
