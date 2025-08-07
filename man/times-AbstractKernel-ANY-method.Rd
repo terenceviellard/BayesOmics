@@ -12,7 +12,7 @@
 \item{e2}{ANY.}
 }
 \value{
-An object of class AbstractKernel.
+An object of class ProductKernel.
 }
 \description{
 This method defines the multiplication operation for AbstractKernel objects.

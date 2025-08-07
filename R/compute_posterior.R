@@ -4,6 +4,10 @@
 #' It expects the input data frame to contain a column named 'Group' that identifies
 #' the groups, as well as columns 'ID', 'Output', and 'Input'.
 #'
+#' The posterior distribution is given by:
+#'
+#' \eqn{p(\mathbf{\mu} \mid y_1, \dots, y_N, \Sigma_{\hat{\theta}}) = \mathcal{N}\left(\mathbf{\mu}; \ \dfrac{\lambda_0 \mu_0 + \sum_{n=1}^{N} y_n}{N + \lambda_0}, \dfrac{1}{N + \lambda_0} \Sigma_{\hat{\theta}}\right)}
+#'
 #' @param data A data frame containing the data to be analyzed. Must include columns 'Group', 'ID', 'Output', and 'Input'.
 #' @param kern A kernel function or object used to compute pairwise kernels.
 #' @param mu_0 Prior mean parameter.

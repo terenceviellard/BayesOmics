@@ -17,3 +17,9 @@ A kernel with new HPs
 \description{
 Update HPs of complex kernels
 }
+\examples{
+# Assuming SEKernel is a subclass of AbstractKernel with hyperparameters
+kernel <- new("SEKernel", variance_se = 1, length_scale_se = 1)
+updated_kernel <- set_hyperparameters(kernel, c(variance_se = 2, length_scale_se = 0.5))
+
+}

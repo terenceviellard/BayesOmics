@@ -33,13 +33,13 @@ library(BayesOmics)
 ``` r
 data <- simu_db()
 head(data)
-#>     ID Group Sample     Input     Output
-#> 1 ID_1     1      1 26.548430  6.4503764
-#> 2 ID_1     1      2 22.573584 10.1725170
-#> 3 ID_1     1      3 49.331077  7.0066756
-#> 4 ID_1     1      4  9.854966 45.4006208
-#> 5 ID_1     1      5 13.655596 18.4826452
-#> 6 ID_1     2      1  1.726766  0.3239422
+#>     ID Group Sample     Input    Output
+#> 1 ID_1     1      1 21.789283 45.173005
+#> 2 ID_1     1      2  6.568757 36.764282
+#> 3 ID_1     1      3 49.113050 13.280864
+#> 4 ID_1     1      4 40.326233 45.576368
+#> 5 ID_1     1      5 18.248666  6.405751
+#> 6 ID_1     2      1 40.349434 46.062372
 ```
 
 ``` r
@@ -107,7 +107,7 @@ posterior <- multi_posterior_mean(data, SEKernelopt)
 
 ``` r
 calculate_group_overlaps(posterior)
-#>          Group1   Group2
-#> Group1 1.000000 0.452531
-#> Group2 0.452531 1.000000
+#>           Group1    Group2
+#> Group1 1.0000000 0.3279821
+#> Group2 0.3279821 1.0000000
 ```

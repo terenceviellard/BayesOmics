@@ -41,6 +41,7 @@ library(BayesOmics)
 data <- simu_db()
 head(data)
 ```
+
 ```{r}
 colnames(data)
 ```
