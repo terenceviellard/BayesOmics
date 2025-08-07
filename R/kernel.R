@@ -1829,34 +1829,8 @@ sum_logGaussian <- function(hp, db, mean, kern, post_cov, pen_diag) {
   cov <- pairwise_kernel(kern, input, input) + post_cov
   inv <- chol_inv_jitter(cov, pen_diag = pen_diag)
 
-  # Ensure db$Output is a matrix or data frame
-  if (!is.matrix(db$Output) && !is.data.frame(db$Output)) {
-    # If db$Output is a vector, convert it to a matrix with a single column
-    if (is.vector(db$Output)) {
-      db$Output <- matrix(db$Output, ncol = 1)
-    } else {
-      stop("db$Output must be a matrix, data frame, or vector.")
-    }
-  }
-
-  ncol_output <- ncol(db$Output)
-  if (ncol_output == 0) {
-    stop("db$Output must have at least one column.")
-  }
-
-  # Ensure mean is compatible with the number of columns in db$Output
-  if (is.vector(mean)) {
-    if (length(mean) == 1) {
-      mean <- rep(mean, times = ncol_output)
-    } else if (length(mean) != ncol_output) {
-      stop("The length of mean must match the number of columns in db$Output.")
-    }
-  } else if (is.matrix(mean)) {
-    if (ncol(mean) != ncol_output || nrow(mean) != nrow(db$Output)) {
-      stop("The dimensions of mean must match the dimensions of db$Output.")
-    }
-  } else {
-    stop("mean must be a vector or a matrix.")
+  if (length(mean) == 1) {
+    mean <- rep(mean, nrow(db))
   }
 
   log_likelihoods <- dmnorm(db$Output, mean, inv, log = TRUE)
@@ -1905,7 +1879,7 @@ gr_sum_logGaussian <- function(hp, db, mean, kern, post_cov, pen_diag) {
 #'
 #' @return If `verbose` is FALSE, a vector of optimized hyperparameters; otherwise, the full result from the `optim` function.
 #' @export
-optim_hp <- function(hp, db, mean, kern, post_cov, pen_diag, verbose = FALSE) {
+optim_hp <- function(hp, db, mean, kern, post_cov, pen_diag=1e-6, verbose = FALSE) {
   # Call the optimization function
   result <- stats::optim(
     par = hp,

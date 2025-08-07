@@ -22,15 +22,16 @@ calculate_group_overlaps <- function(results, n = 1000) {
   for (i in 1:(num_groups - 1)) {
     for (j in (i + 1):num_groups) {
       group1 <- results[[i]]
+      print(group1)
       group2 <- results[[j]]
-
+      print(group2)
       # Check if muk and sigmak are present
       if (!all(c("muk", "sigmak") %in% names(group1)) || !all(c("muk", "sigmak") %in% names(group2))) {
         stop("Each group in results must contain 'muk' and 'sigmak'.")
       }
 
-      sample1 <- rnorm(n, mean = group1$muk, sd = sqrt(diag(group1$sigmak)))
-      sample2 <- rnorm(n, mean = group2$muk, sd = sqrt(diag(group2$sigmak)))
+      sample1 <- rnorm(n, mean = group1$muk, sd = group1$sigmak)
+      sample2 <- rnorm(n, mean = group2$muk, sd = group2$sigmak)
       overlap_coefficient <- overlap(sample1, sample2)
       overlap_matrix[group_names[i], group_names[j]] <- overlap_coefficient
       overlap_matrix[group_names[j], group_names[i]] <- overlap_coefficient

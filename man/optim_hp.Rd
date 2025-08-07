@@ -4,7 +4,7 @@
 \alias{optim_hp}
 \title{Optimize Hyperparameters for a kernel}
 \usage{
-optim_hp(hp, db, mean, kern, post_cov, pen_diag, verbose = FALSE)
+optim_hp(hp, db, mean, kern, post_cov, pen_diag = 1e-06, verbose = FALSE)
 }
 \arguments{
 \item{hp}{A vector of initial hyperparameters to be optimized.}
