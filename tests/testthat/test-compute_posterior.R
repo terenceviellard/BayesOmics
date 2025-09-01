@@ -1,3 +1,7 @@
+#' @importFrom keRnel SEKernel
+#' @importFrom methods new setClass
+
+
 test_that("multi_posterior_mean computes posterior means correctly", {
   # Create a sample dataset
   data <- data.frame(

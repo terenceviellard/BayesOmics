@@ -22,9 +22,7 @@ calculate_group_overlaps <- function(results, n = 1000) {
   for (i in 1:(num_groups - 1)) {
     for (j in (i + 1):num_groups) {
       group1 <- results[[i]]
-      print(group1)
       group2 <- results[[j]]
-      print(group2)
       # Check if muk and sigmak are present
       if (!all(c("muk", "sigmak") %in% names(group1)) || !all(c("muk", "sigmak") %in% names(group2))) {
         stop("Each group in results must contain 'muk' and 'sigmak'.")

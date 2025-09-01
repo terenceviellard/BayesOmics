@@ -37,7 +37,7 @@ multi_posterior_mean <- function(data, kern, mu_0 = 1, lambda_0 = 1) {
 
     if (nrow(group_df) > 0) {
       inputs <- as.matrix(group_df$Input)
-      sigmak <- pairwise_kernel(kern, inputs, inputs) / (nrow(group_df) + lambda_0)
+      sigmak <- keRnel::pairwise_kernel(kern, inputs, inputs) / (nrow(group_df) + lambda_0)
     } else {
       sigmak <- NA
     }
