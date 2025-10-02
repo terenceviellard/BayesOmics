@@ -36,7 +36,8 @@ multi_posterior_mean <- function(data, kern, mu_0 = 1, lambda_0 = 1) {
     names(muk_vector) <- all_peptides
 
     if (nrow(group_df) > 0) {
-      inputs <- as.matrix(group_df$Input)
+      unique_input= unique(group_df$Input)
+      inputs <- as.matrix(unique_input)
       sigmak <- keRnel::pairwise_kernel(kern, inputs, inputs) / (nrow(group_df) + lambda_0)
     } else {
       sigmak <- NA
