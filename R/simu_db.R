@@ -46,3 +46,5 @@ simu_db <- function(
 
   return(db)
 }
+
+

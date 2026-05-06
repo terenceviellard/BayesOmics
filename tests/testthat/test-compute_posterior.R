@@ -12,7 +12,7 @@ test_that("multi_posterior_mean computes posterior means correctly", {
   )
 
   # Define a simple kernel function for testing
-  kernel <- new("SEKernel")
+  kernel <-new("SEKernel")
   # Parameters for the prior distribution
   mu_0 <- 0
   lambda_0 <- 1

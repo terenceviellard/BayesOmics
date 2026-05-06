@@ -7,13 +7,18 @@ Description: Bayesian differential analysis for omics data.The correlation struc
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Imports:
     stats,
     bayestestR,
-    keRnel
+    dplyr,
+    keRnel,
+    purrr,
+    mvtnorm,
+    methods,
+    rlang
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Remotes:
-    keRnel [git::https://github.com/terenceviellard/keRnel.git]
+    terenceviellard/keRnel 

@@ -16,5 +16,5 @@ Each group should have elements \code{muk} (mean) and \code{sigmak} (covariance 
 A list of sampled values for each group.
 }
 \description{
-Sample
+Sample n elements from the posterior distribution.
 }
