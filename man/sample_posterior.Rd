@@ -7,14 +7,25 @@
 sample_posterior(results, n)
 }
 \arguments{
-\item{results}{A list containing parameters of the posterior distribution for each group.
-Each group should have elements \code{muk} (mean) and \code{sigmak} (covariance matrix). (from multi_posterior_mean)}
+\item{results}{A list returned by \code{\link{multi_posterior_mean}}, with
+elements \code{kernels} and \code{groups}.}
 
 \item{n}{A number indicating the number of samples}
 }
 \value{
-A list of sampled values for each group.
+A data frame with columns \code{ID}, \code{Group}, and
+\code{Sample} (one row per draw, per ID, per group).
 }
 \description{
-Sample
+Sample n elements from the posterior distribution of each group, and
+reshape the result directly into the long-format data frame expected by
+\code{\link{plot_distrib}}.
+}
+\examples{
+data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5)
+kern <- methods::new("SEKernel")
+kern <- keRnel::set_hyperparameters(kern, c(variance_se = 1, length_scale_se = 1))
+posterior <- multi_posterior_mean(data, kern)
+samples <- sample_posterior(posterior, n = 100)
+head(samples)
 }

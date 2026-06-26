@@ -4,3 +4,8 @@
 .httr-oauth
 .DS_Store
 .quarto
+CLAUDE.md
+dev/
+Rplots.pdf
+tests/testthat/Rplots.pdf
+benchmark/

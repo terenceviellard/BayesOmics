@@ -2,18 +2,68 @@
 % Please edit documentation in R/compute_diff.R
 \name{calculate_group_overlaps}
 \alias{calculate_group_overlaps}
-\title{Compute Overlapping Coefficient}
+\title{Compute Overlapping Coefficient between Groups}
 \usage{
-calculate_group_overlaps(results, n = 1000)
+calculate_group_overlaps(results, max_groups_warn = 50, max_dim_warn = 500)
 }
 \arguments{
-\item{results}{A list containing parameters of the posterior distribution for each group.}
+\item{results}{A list, typically from \code{\link{multi_posterior_mean}},
+with elements \code{kernels} and \code{groups} (one entry per group,
+each with \code{muk}, \code{id_to_input}, \code{kernel_key}, \code{scale}).}
 
-\item{n}{A number indicating the number of samples generated during the overlapping coefficient computation process.}
+\item{max_groups_warn}{Emit a warning about the \eqn{O(G^2 d^3)} cost above
+(see Description) if the number of groups exceeds this. Defaults to \code{50}.}
+
+\item{max_dim_warn}{Emit the same warning if the number of shared IDs \eqn{d}
+exceeds this. Defaults to \code{500}.}
 }
 \value{
-A matrix with the coefficient for each group.
+A symmetric matrix of OVL coefficients in \eqn{[0, 1]}, with 1 on the diagonal.
 }
 \description{
-Use the bayestestR package to compute the overlapping coefficient.
+Computes a symmetric matrix of pairwise overlapping coefficients (OVL) between
+every pair of groups.
+
+For two groups sharing the same underlying kernel matrix (same \code{kernel_key},
+i.e. the same set of Input values), their posterior covariances are
+\eqn{\Sigma_1 = \Sigma/(\lambda_0+N_1)} and \eqn{\Sigma_2 = \Sigma/(\lambda_0+N_2)} for
+a shared raw kernel matrix \eqn{\Sigma}, so \eqn{\Sigma_2 = c\,\Sigma_1} with
+\eqn{c = \mathrm{scale}_1/\mathrm{scale}_2}. Writing
+\eqn{D^2 = (\mu_2-\mu_1)^\top\Sigma_1^{-1}(\mu_2-\mu_1)} and \eqn{d} the dimension
+(number of shared IDs), the exact Gaussian overlap is used:
+
+\itemize{
+\item \eqn{c = 1}: \deqn{OVL = 2 \Phi\!\left(-D/2\right)}
+\item \eqn{c \ne 1}, with
+\eqn{\lambda_1 = D^2/(1-c)^2}, \eqn{\lambda_2 = cD^2/(1-c)^2},
+\eqn{t = (D^2 - d(1-c)\ln c)/(1-c)^2}:
+\deqn{OVL = \begin{cases}
+      F_{\chi^2_d(\lambda_1)}(ct) + 1 - F_{\chi^2_d(\lambda_2)}(t), & 0<c<1 \\
+      F_{\chi^2_d(\lambda_2)}(t) + 1 - F_{\chi^2_d(\lambda_1)}(ct), & c>1
+    \end{cases}}
+}
+
+Two groups with different \code{kernel_key} (different sets of Input values) do not
+share a common raw kernel matrix \eqn{\Sigma}, so this closed-form ratio does not
+apply; an error is raised in that case.
+
+When \eqn{c} is not exactly 1 but very close to it (relative difference below
+\code{1e-6}), the \eqn{c \ne 1} formula above becomes numerically unstable
+(it divides by \eqn{(1-c)^2}). In that case a warning is issued and the
+\eqn{c = 1} formula is used instead, with \eqn{\Sigma_1} taken from whichever
+group has the smaller scale (i.e. the larger, more conservative posterior
+covariance).
+
+Cost: each pair of groups requires one matrix inversion of size \eqn{d \times d}
+(\eqn{d} = number of shared IDs), so the total cost is \eqn{O(G^2 d^3)} for
+\eqn{G} groups -- e.g. 10 groups with 400 shared IDs already means about 45
+inversions of 400x400 matrices. A warning is issued if this is likely to be
+slow (see \code{max_groups_warn}/\code{max_dim_warn}).
+}
+\examples{
+data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5, diff_group = 5)
+kern <- methods::new("SEKernel")
+kern <- keRnel::set_hyperparameters(kern, c(variance_se = 1, length_scale_se = 1))
+posterior <- multi_posterior_mean(data, kern)
+calculate_group_overlaps(posterior)
 }
