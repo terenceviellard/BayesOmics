@@ -8,5 +8,6 @@
 
 library(testthat)
 library(BayesOmics)
+library(keRnel)
 
 test_check("BayesOmics")

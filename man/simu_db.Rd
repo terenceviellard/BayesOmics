@@ -33,7 +33,7 @@ simu_db(
 A full dataset of synthetic data.
 }
 \description{
-Simulate a complete training dataset, which may be representative of various applications.
+Simulate a basic complete training dataset.
 Several flexible arguments allow adjustment of the number of id, groups, and samples in each experiment.
 The values of several parameters controlling the data generation process can be modified.
 }
