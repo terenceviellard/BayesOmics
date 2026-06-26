@@ -16,7 +16,21 @@ multi_posterior_mean(data, kern, mu_0 = 1, lambda_0 = 1)
 \item{lambda_0}{Prior precision parameter.}
 }
 \value{
-A list of results for each group, containing the posterior means and kernel matrices.
+A list with two elements:
+\describe{
+\item{\code{kernels}}{A named list of kernel/correlation matrices, one per
+distinct set of Input values found across groups. Each matrix has
+\code{dimnames} set to the (string-formatted) Input values it was built
+from, and is shared by reference across every group with that same set
+of Input values (no duplication).}
+\item{\code{groups}}{A named list (one entry per group) with: \code{muk},
+a named vector of posterior means keyed by ID; \code{id_to_input}, the
+ID -> Input mapping for that group; \code{kernel_key}, which entry of
+\code{kernels} to use; and \code{scale}, the divisor (\code{n_obs + lambda_0})
+applied to that kernel matrix to get the posterior covariance. The
+(internal) \code{get_sigmak()} helper reconstructs the actual
+(ID-aligned) posterior covariance matrix for a group.}
+}
 }
 \description{
 This function computes the posterior means for different groups within a dataset.
@@ -27,4 +41,11 @@ the groups, as well as columns 'ID', 'Output', and 'Input'.
 The posterior distribution is given by:
 
 \eqn{p(\mathbf{\mu} \mid y_1, \dots, y_N, \Sigma_{\hat{\theta}}) = \mathcal{N}\left(\mathbf{\mu}; \ \dfrac{\lambda_0 \mu_0 + \sum_{n=1}^{N} y_n}{N + \lambda_0}, \dfrac{1}{N + \lambda_0} \Sigma_{\hat{\theta}}\right)}
+}
+\examples{
+data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5)
+kern <- methods::new("SEKernel")
+kern <- keRnel::set_hyperparameters(kern, c(variance_se = 1, length_scale_se = 1))
+posterior <- multi_posterior_mean(data, kern)
+posterior$groups[["1"]]$muk
 }
