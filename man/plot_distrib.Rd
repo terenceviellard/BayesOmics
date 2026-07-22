@@ -96,8 +96,7 @@ this automatic summary, use \code{\link{plot_distrib_each_pair}}.
 }
 \examples{
 data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5)
-kern <- methods::new("SEKernel")
-kern <- keRnel::set_hyperparameters(kern, c(variance_se = 1, length_scale_se = 1))
+kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
 posterior <- multi_posterior_mean(data, kern)
 samples <- sample_posterior(posterior, n = 500)
 plot_distrib(samples, group1 = "1", group2 = "2", id = unique(samples$ID)[1])

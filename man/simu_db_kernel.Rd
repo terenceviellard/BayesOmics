@@ -8,44 +8,94 @@ simu_db_kernel(
   nb_id = 5,
   nb_group = 2,
   nb_sample = 5,
+  nb_dim = 1,
   range_output = c(0, 50),
   range_input = c(0, 50),
   diff_group = 3,
   var_sample = 2,
-  kernel,
+  kernel = NULL,
   mu_random = FALSE,
   mu_0 = NULL,
   lambda_0 = 1,
-  pen_diag = 1e-06
+  pen_diag = 1e-06,
+  group_labels = NULL,
+  integer_input = FALSE,
+  input_grid = FALSE
 )
 }
 \arguments{
-\item{nb_id}{An integer, indicating the number of id in the data.}
+\item{nb_id}{An integer, indicating the number of features (ids) in the data.}
 
 \item{nb_group}{An integer, indicating the number of groups/conditions.}
 
-\item{nb_sample}{An integer, indicating the number of independent replicates per group.}
+\item{nb_sample}{An integer or a vector of length \code{nb_group}. When a scalar,
+all groups receive the same number of replicates. When a vector, element \code{g}
+sets the number of replicates for group \code{g} independently, enabling unbalanced
+designs.}
 
-\item{range_output}{A 2-sized vector; its midpoint is used as the default baseline mean (\code{mu_0}) when \code{mu_0} is not supplied.}
+\item{nb_dim}{An integer, indicating the number of Input dimensions per id.
+Defaults to \code{1} (a single scalar Input per id, emitted with
+\code{Input_ID = 1}). For \code{nb_dim > 1}, the kernel is evaluated
+directly on the \code{nb_id x nb_dim} matrix of positions (isotropic by
+default: a single shared \code{length_scale} across every dimension,
+unless \code{kernel} itself is an \code{ard_kernel()} or similar).
+\code{range_input} is applied independently to every dimension (each
+dimension's column of positions is drawn independently, not as
+globally-distinct D-dimensional tuples).}
 
-\item{range_input}{A 2-sized vector, indicating the range of values for input from which to pick a position for each id.}
+\item{range_output}{A 2-element vector; its midpoint is used as the default baseline
+mean (\code{mu_0}) when \code{mu_0} is not supplied.}
 
-\item{diff_group}{A number, indicating the mean difference between consecutive groups.}
+\item{range_input}{A 2-element vector, indicating the range from which Input values
+are drawn for each feature and each dimension. Ignored for the integer dimension when \code{integer_input = TRUE}.}
 
-\item{var_sample}{A positive number, the variance of the independent measurement noise added on top of the kernel-induced covariance.}
+\item{diff_group}{A numeric scalar or a vector of length \code{nb_group}. When a
+scalar, group \code{g} receives a shift of \code{diff_group * (g - 1)} (linear
+dose-response, group 1 = reference). When a vector, element \code{g} is the absolute
+offset applied to group \code{g}, allowing arbitrary non-linear group contrasts.}
 
-\item{kernel}{A kernel object inheriting from \code{AbstractKernel} (keRnel package), used through \code{keRnel::pairwise_kernel()} to build the covariance matrix shared by every group.}
+\item{var_sample}{A positive number, the variance of the independent measurement noise
+added on top of the kernel-induced covariance.}
 
-\item{mu_random}{If \code{TRUE}, draw each group's mean vector from the conjugate prior \eqn{\mathcal{N}(\mu_0, \Sigma_\theta/\lambda_0)} instead of using a deterministic constant baseline. Defaults to \code{FALSE}.}
+\item{kernel}{A kernel object (from the keRnel package). Defaults to
+\code{variance_kernel(variance = 1) * se_kernel(length_scale = 1)} when
+\code{NULL}.}
 
-\item{mu_0}{Baseline mean shared by every id (deterministic case) or prior mean (\code{mu_random = TRUE}); defaults to the midpoint of \code{range_output}.}
+\item{mu_random}{If \code{TRUE}, draw each group's mean vector from the conjugate prior
+\eqn{\mathcal{N}(\mu_0, \Sigma_\theta/\lambda_0)} instead of a deterministic constant
+baseline. Defaults to \code{FALSE}.}
 
-\item{lambda_0}{Prior precision scaling (only used when \code{mu_random = TRUE}); must be a single positive number. Defaults to \code{1}.}
+\item{mu_0}{Baseline mean shared by every id (deterministic case) or prior mean
+(\code{mu_random = TRUE}); defaults to the midpoint of \code{range_output}.}
 
-\item{pen_diag}{Jitter added to the diagonal of the kernel-induced covariance matrix for numerical stability. Defaults to \code{1e-6}.}
+\item{lambda_0}{Prior precision scaling (only used when \code{mu_random = TRUE});
+must be a single positive number. Defaults to \code{1}.}
+
+\item{pen_diag}{Jitter added to the diagonal of the kernel-induced covariance matrix
+for numerical stability. Defaults to \code{1e-6}.}
+
+\item{group_labels}{A character or numeric vector of length \code{nb_group} providing
+custom labels for the \code{Group} column. Defaults to \code{NULL}, which uses
+\code{"1"}, \code{"2"}, \ldots, \code{"nb_group"}.}
+
+\item{integer_input}{Logical. If \code{TRUE}, Input values are distinct integers drawn
+from \code{[ceiling(range_input[1]), floor(range_input[2])]}. If \code{FALSE}
+(default), Input values are continuous uniform draws. See also \code{input_grid}.}
+
+\item{input_grid}{Logical. Only used when \code{integer_input = TRUE}. If \code{FALSE}
+(default), integers are sampled uniformly without replacement (random positions). If
+\code{TRUE}, integers are placed on a regular grid of \code{nb_id} evenly spaced
+positions across the integer range (deterministic layout).}
 }
 \value{
-A full dataset of synthetic data.
+A data frame of synthetic data with columns \code{ID}, \code{Group},
+\code{Sample}, \code{Input_ID}, \code{Input}, \code{Output}. Two attributes are attached:
+\describe{
+\item{\code{mu_true}}{Named list, one entry per group, each a named vector of true
+per-feature means.}
+\item{\code{base_input}}{An \code{nb_id x nb_dim} numeric matrix (\code{rownames = ID})
+giving the Input position(s) assigned to each feature.}
+}
 }
 \description{
 Simulate a complete training dataset, similar to \code{simu_db()}, but consistent
@@ -53,22 +103,41 @@ with the generative model underlying \code{\link{multi_posterior_mean}}: for eac
 group, the vector of Output values across the \code{nb_id} ids (indexed by their
 Input position) is drawn jointly from a multivariate normal distribution whose
 covariance is given by the kernel applied pairwise to the (shared, per-id) Input
-values, plus independent measurement noise. Each of the \code{nb_sample} replicates
-of a group is an independent draw of that same distribution:
-\deqn{y_n \mid \mu_g \sim \mathcal{N}(\mu_g,\ \Sigma_\theta + \sigma^2 I), \quad n = 1,\dots,\code{nb_sample}}
+values, plus independent measurement noise. Each replicate is an independent draw
+of that same distribution:
+\deqn{y_n \mid \mu_g \sim \mathcal{N}(\mu_g,\ \Sigma_\theta + \sigma^2 I), \quad n = 1,\dots,N_g}
 where \eqn{\Sigma_\theta} is the kernel matrix over the (shared) Input values and
 \eqn{\sigma^2} is \code{var_sample}. This makes \eqn{\Sigma_\theta} -- not just the
 Input values -- shared across every group, exactly as assumed by
 \code{\link{multi_posterior_mean}} and required by \code{\link{calculate_group_overlaps}}.
 
 By default (\code{mu_random = FALSE}) the per-group mean \eqn{\mu_g} is a
-deterministic per-id baseline shifted by \code{diff_group} per group level. Setting
-\code{mu_random = TRUE} instead draws \eqn{\mu_g} from the conjugate prior assumed by
-\code{\link{multi_posterior_mean}}, \eqn{\mu_g \sim \mathcal{N}(\mu_0,\ \Sigma_\theta/\lambda_0)}
-(shifted by \code{diff_group} per group level) -- useful for validating the posterior's
-frequentist coverage against the true generative \eqn{\mu_g}.
+deterministic per-id baseline shifted by the corresponding element of \code{diff_group}.
+Setting \code{mu_random = TRUE} instead draws \eqn{\mu_g} from the conjugate prior,
+\eqn{\mu_g \sim \mathcal{N}(\mu_0,\ \Sigma_\theta/\lambda_0)} (plus the group shift)
+-- useful for validating the posterior's frequentist coverage against the true \eqn{\mu_g}.
 }
 \examples{
-ker <- methods::new("SEKernel")
+# Default kernel (variance = 1, length_scale = 1):
+data <- simu_db_kernel()
+
+# Custom kernel:
+ker <- keRnel::variance_kernel(variance = 2) * keRnel::se_kernel(length_scale = 3)
 data <- simu_db_kernel(kernel = ker)
+
+# Unbalanced design: 3 replicates for group 1, 15 for group 2:
+data <- simu_db_kernel(nb_sample = c(3, 15))
+
+# Arbitrary group contrasts (non-linear dose-response):
+data <- simu_db_kernel(nb_group = 4, diff_group = c(0, 5, 5, 10))
+
+# Custom group labels:
+data <- simu_db_kernel(nb_group = 2, group_labels = c("Control", "Treatment"))
+
+# Integer inputs on a regular grid:
+data <- simu_db_kernel(nb_id = 10, integer_input = TRUE, input_grid = TRUE,
+                       range_input = c(0, 100))
+
+# Multi-dimensional Input (D = 2), isotropic kernel:
+data <- simu_db_kernel(nb_dim = 2)
 }

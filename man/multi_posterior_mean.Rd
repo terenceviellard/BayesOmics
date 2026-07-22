@@ -7,9 +7,9 @@
 multi_posterior_mean(data, kern, mu_0 = 1, lambda_0 = 1)
 }
 \arguments{
-\item{data}{A data frame containing the data to be analyzed. Must include columns 'Group', 'ID', 'Output', and 'Input'.}
+\item{data}{A data frame containing the data to be analyzed. Must include columns 'Group', 'ID', 'Output', and 'Input' (plus 'Input_ID' for a multi-dimensional Input).}
 
-\item{kern}{A kernel function or object used to compute pairwise kernels.}
+\item{kern}{A kernel object (from the keRnel package) used to compute pairwise covariances.}
 
 \item{mu_0}{Prior mean parameter.}
 
@@ -19,23 +19,29 @@ multi_posterior_mean(data, kern, mu_0 = 1, lambda_0 = 1)
 A list with two elements:
 \describe{
 \item{\code{kernels}}{A named list of kernel/correlation matrices, one per
-distinct set of Input values found across groups. Each matrix has
-\code{dimnames} set to the (string-formatted) Input values it was built
-from, and is shared by reference across every group with that same set
-of Input values (no duplication).}
+distinct set of Input positions found across groups. Each matrix has
+\code{dimnames} set to a string key per position (see
+\code{row_input_key()}), and is shared by reference across every group
+with that same set of positions (no duplication).}
 \item{\code{groups}}{A named list (one entry per group) with: \code{muk},
-a named vector of posterior means keyed by ID; \code{id_to_input}, the
-ID -> Input mapping for that group; \code{kernel_key}, which entry of
-\code{kernels} to use; and \code{scale}, the divisor (\code{n_obs + lambda_0})
-applied to that kernel matrix to get the posterior covariance. The
-(internal) \code{get_sigmak()} helper reconstructs the actual
-(ID-aligned) posterior covariance matrix for a group.}
+a named vector of posterior means keyed by ID; \code{id_to_input}, an
+n_ids x D matrix (\code{rownames = ID}) giving that group's ID -> Input
+position mapping; \code{kernel_key}, which entry of \code{kernels} to
+use; and \code{scale}, the divisor (\code{n_obs + lambda_0}) applied to
+that kernel matrix to get the posterior covariance. The (internal)
+\code{get_sigmak()} helper reconstructs the actual (ID-aligned)
+posterior covariance matrix for a group.}
 }
 }
 \description{
 This function computes the posterior means for different groups within a dataset.
 It expects the input data frame to contain a column named 'Group' that identifies
-the groups, as well as columns 'ID', 'Output', and 'Input'.
+the groups, as well as columns 'ID', 'Output', and 'Input' -- and, for a
+multi-dimensional Input, an additional 'Input_ID' column (see
+\code{\link{normalize_input_cols}}): one row per (Group, ID, Sample,
+Input_ID), with 'Output' repeated identically across the rows of one
+observation. A legacy data frame with just a single 'Input' column (no
+'Input_ID') keeps working unchanged.
 }
 \details{
 The posterior distribution is given by:
@@ -44,8 +50,7 @@ The posterior distribution is given by:
 }
 \examples{
 data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5)
-kern <- methods::new("SEKernel")
-kern <- keRnel::set_hyperparameters(kern, c(variance_se = 1, length_scale_se = 1))
+kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
 posterior <- multi_posterior_mean(data, kern)
 posterior$groups[["1"]]$muk
 }

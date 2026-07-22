@@ -1,7 +1,8 @@
 #' @importFrom ggplot2 ggplot aes geom_ribbon geom_area geom_vline geom_label geom_point
-#' @importFrom ggplot2 geom_line geom_tile geom_text facet_wrap
+#' @importFrom ggplot2 geom_line geom_bar geom_tile geom_text facet_wrap
 #' @importFrom ggplot2 scale_fill_manual scale_colour_manual scale_fill_gradient
 #' @importFrom ggplot2 theme_classic theme element_line element_rect element_text ylab xlab labs
+#' @importFrom ggplot2 xlim ggtitle
 #' @importFrom tibble tibble
 #' @importFrom gridExtra grid.arrange
 #' @importFrom stats density quantile
@@ -295,8 +296,7 @@ build_faceted_pairs_distrib <- function(sample_distrib, pairs, id, prob_CI, show
 #'
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5)
-#' kern <- methods::new("SEKernel")
-#' kern <- keRnel::set_hyperparameters(kern, c(variance_se = 1, length_scale_se = 1))
+#' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
 #' posterior <- multi_posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 500)
 #' plot_posterior_mean(samples)
@@ -312,6 +312,15 @@ plot_posterior_mean <- function(sample_distrib){
     dplyr::group_by(.data$ID, .data$Group) %>%
     dplyr::summarise(Mean = mean(.data$Sample), .groups = "drop")
 
+  build_posterior_mean_plot(mean_db)
+}
+
+## Shared by plot_posterior_mean() and plot_multi_diff()'s mean panel: both
+## have a mean_db with ID/Group/Mean columns on hand (the former computes it
+## from raw samples, the latter already has it as compute_multi_diff()'s
+## Diff_mean), so the actual plot assembly is factored out once.
+#' @noRd
+build_posterior_mean_plot <- function(mean_db) {
   n_groups <- length(unique(mean_db$Group))
 
   ggplot2::ggplot(mean_db) +
@@ -350,8 +359,7 @@ plot_posterior_mean <- function(sample_distrib){
 #'
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 4, nb_sample = 5, diff_group = 4)
-#' kern <- methods::new("SEKernel")
-#' kern <- keRnel::set_hyperparameters(kern, c(variance_se = 1, length_scale_se = 1))
+#' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
 #' posterior <- multi_posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 500)
 #' plot_group_overlap_heatmap(samples, id = unique(samples$ID)[1])
@@ -415,8 +423,7 @@ plot_group_overlap_heatmap <- function(sample_distrib, id = NULL, digits = 2){
 #'
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 4, nb_sample = 5, diff_group = 4)
-#' kern <- methods::new("SEKernel")
-#' kern <- keRnel::set_hyperparameters(kern, c(variance_se = 1, length_scale_se = 1))
+#' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
 #' posterior <- multi_posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 500)
 #' plots <- plot_distrib_each_pair(samples, id = unique(samples$ID)[1])
@@ -560,8 +567,7 @@ build_overlap_distrib <- function(sample_distrib, group1, group2, id) {
 #'
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5)
-#' kern <- methods::new("SEKernel")
-#' kern <- keRnel::set_hyperparameters(kern, c(variance_se = 1, length_scale_se = 1))
+#' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
 #' posterior <- multi_posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 500)
 #' plot_posterior_overlap(samples, group1 = "1", group2 = "2", id = unique(samples$ID)[1])
@@ -707,8 +713,7 @@ plot_distrib_multi_group <- function(
 #'
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5)
-#' kern <- methods::new("SEKernel")
-#' kern <- keRnel::set_hyperparameters(kern, c(variance_se = 1, length_scale_se = 1))
+#' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
 #' posterior <- multi_posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 500)
 #' plot_distrib(samples, group1 = "1", group2 = "2", id = unique(samples$ID)[1])
@@ -765,4 +770,165 @@ plot_distrib = function(
     sample_distrib, group1, group2, id,
     prob_CI, show_prob, mean_bar, index_group1, index_group2
   )
+}
+
+## One panel of plot_multi_diff(): either the Nb_id probability mass (bar) or
+## its cumulative distribution (line), for a single group pair. `cumulative`
+## actually drives which column/geom is used here (unlike the inspiration
+## code, where it was inferred from whichever column happened to be present).
+#' @noRd
+build_multi_diff_panel <- function(db_plot, group1, group2, cumulative, overlap_coef = NULL) {
+  if (!cumulative) {
+    gg <- ggplot2::ggplot(db_plot) +
+      ggplot2::geom_bar(
+        ggplot2::aes(x = .data$Nb_id, y = .data$Proba), stat = "identity", fill = .bo_centre
+      ) +
+      ggplot2::geom_vline(
+        ggplot2::aes(xintercept = max(.data$Nb_id) / 2), color = .bo_line, linetype = "dashed"
+      ) +
+      ggplot2::ylab("Probability") +
+      ggplot2::xlim(c(min(db_plot$Nb_id) - 0.5, max(db_plot$Nb_id) + 0.5))
+  } else {
+    gg <- ggplot2::ggplot(db_plot) +
+      ggplot2::geom_line(
+        ggplot2::aes(x = .data$Nb_id, y = .data$Cumul_proba), col = .bo_centre
+      ) +
+      ggplot2::ylab("Cumulative probability") +
+      ggplot2::xlim(c(min(db_plot$Nb_id), max(db_plot$Nb_id)))
+  }
+
+  gg <- gg +
+    theme_bayesomics() +
+    ggplot2::xlab(
+      bquote(paste("Number of IDs i where ", mu[.(group1)]^i > mu[.(group2)]^i))
+    )
+
+  if (!is.null(overlap_coef)) {
+    gg <- gg + ggplot2::ggtitle(bquote(paste("Overlapping coefficient: ", .(round(overlap_coef, 3)))))
+  }
+
+  gg
+}
+
+#' @title Plot a multivariate summary of group differences
+#'
+#' @description
+#' For every pair of groups present in \code{multi_diff}, plots the empirical
+#' distribution of the number of IDs for which group1's posterior draw exceeds
+#' group2's (see \code{\link{compute_multi_diff}}), arranged as an
+#' upper-triangular grid of panels via \code{gridExtra::grid.arrange} -- one
+#' panel per pair, with no cap on the number of groups (mirrors
+#' \code{\link{plot_distrib_each_pair}}'s equivalent no-cap behaviour). This
+#' complements \code{\link{plot_distrib}}'s per-id view with a region-wide,
+#' uncertainty-aware summary of whether two groups are differential.
+#'
+#' @param multi_diff A list, typically coming from
+#'    \code{\link{compute_multi_diff}}, with elements \code{Diff_proba} and
+#'    \code{Diff_mean} (and optionally \code{Overlap_coef}).
+#' @param plot_mean A boolean, indicating whether an additional panel showing
+#'    the posterior mean of every ID (coloured by group, see
+#'    \code{\link{plot_posterior_mean}}) should be displayed. Defaults to
+#'    \code{TRUE}.
+#' @param cumulative A boolean, indicating whether each panel shows the
+#'    cumulative distribution (\code{TRUE}) or the probability mass (\code{FALSE},
+#'    default) of the number of IDs where group1's posterior draw exceeds group2's.
+#'
+#' @return The result of \code{gridExtra::grid.arrange}: a grid of panels, one
+#'    per group pair, plus (if \code{plot_mean = TRUE}) the id-mean panel.
+#' @export
+#'
+#' @examples
+#' data <- simu_db(nb_id = 8, nb_group = 3, nb_sample = 5, diff_group = 5)
+#' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
+#' posterior <- multi_posterior_mean(data, kern)
+#' samples <- sample_posterior(posterior, n = 500)
+#' multi_diff <- compute_multi_diff(samples, results = posterior)
+#' plot_multi_diff(multi_diff)
+plot_multi_diff <- function(multi_diff, plot_mean = TRUE, cumulative = FALSE) {
+
+  if (!is.list(multi_diff) || !all(c("Diff_proba", "Diff_mean") %in% names(multi_diff))) {
+    stop("'multi_diff' must be the list returned by compute_multi_diff() (with 'Diff_proba' and 'Diff_mean').")
+  }
+
+  required_proba_cols <- c("Group1", "Group2", "Nb_id", "Proba", "Cumul_proba")
+  if (!all(required_proba_cols %in% names(multi_diff$Diff_proba))) {
+    stop(paste0("The following columns are missing from 'multi_diff$Diff_proba': ",
+                paste(setdiff(required_proba_cols, names(multi_diff$Diff_proba)), collapse = ", ")))
+  }
+
+  if (plot_mean) {
+    required_mean_cols <- c("ID", "Group", "Mean")
+    if (!all(required_mean_cols %in% names(multi_diff$Diff_mean))) {
+      stop(paste0("The following columns are missing from 'multi_diff$Diff_mean': ",
+                  paste(setdiff(required_mean_cols, names(multi_diff$Diff_mean)), collapse = ", ")))
+    }
+  }
+
+  proba_diff <- multi_diff$Diff_proba
+
+  list_groups <- proba_diff$Group1 %>%
+    union(proba_diff$Group2) %>%
+    unique()
+
+  if (length(list_groups) < 2) {
+    stop("plot_multi_diff() requires at least two groups in 'multi_diff'.")
+  }
+
+  gg <- list()
+  counter <- 0
+
+  layout_matrix <- matrix(NA,
+                          nrow = length(list_groups) - 1,
+                          ncol = length(list_groups) - 1
+                          )
+
+  layout_x <- 0
+  list_remaining_groups <- list_groups
+
+  for (i in list_groups) {
+
+    layout_x <- layout_x + 1
+    layout_y <- layout_x - 1
+
+    list_remaining_groups <- list_remaining_groups[-1]
+
+    for (j in list_remaining_groups) {
+
+      layout_y <- layout_y + 1
+
+      db_plot <- proba_diff %>%
+        dplyr::filter(
+          (.data$Group1 == i & .data$Group2 == j) | (.data$Group1 == j & .data$Group2 == i)
+        )
+
+      counter <- counter + 1
+      layout_matrix[layout_x, layout_y] <- counter
+
+      overlap_coef <- NULL
+      if (!is.null(multi_diff$Overlap_coef)) {
+        overlap_coef <- multi_diff$Overlap_coef %>%
+          dplyr::filter(
+            (.data$Group1 == i & .data$Group2 == j) | (.data$Group1 == j & .data$Group2 == i)
+          ) %>%
+          dplyr::pull(.data$Overlap_coef)
+        if (length(overlap_coef) == 0) overlap_coef <- NULL
+      }
+
+      gg[[counter]] <- build_multi_diff_panel(db_plot, i, j, cumulative, overlap_coef)
+    }
+  }
+
+  if (plot_mean) {
+
+    if (length(list_groups) == 2) {
+      layout_matrix <- as.matrix(c(1, 2))
+    } else {
+      layout_matrix[length(list_groups) - 1, 1] <- counter + 1
+    }
+
+    gg[[counter + 1]] <- build_posterior_mean_plot(multi_diff$Diff_mean)
+  }
+
+  gridExtra::grid.arrange(grobs = gg, layout_matrix = layout_matrix) %>%
+    return()
 }

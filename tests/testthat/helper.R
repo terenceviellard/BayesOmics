@@ -4,28 +4,29 @@ library(methods)
 # during devtools::test()/R CMD check.
 grDevices::pdf(NULL)
 
-# ── Kernel ──────────────────────────────────────────────────────────────────
+# -- Kernel ------------------------------------------------------------------
 
+# hp = c(variance, length_scale), matching the old make_kernel()'s
+# c(variance_se, length_scale_se) positional convention.
 make_kernel <- function(hp = c(1.0, 1.0)) {
-  k <- new("SEKernel")
-  keRnel::set_hyperparameters(k, hp)
+  keRnel::variance_kernel(variance = hp[1]) * keRnel::se_kernel(length_scale = hp[2])
 }
 
-# ── Data ─────────────────────────────────────────────────────────────────────
+# -- Data ---------------------------------------------------------------------
 
 make_data <- function(nb_id = 5, nb_group = 2, nb_sample = 1, seed = 42) {
   set.seed(seed)
   simu_db(nb_id = nb_id, nb_group = nb_group, nb_sample = nb_sample)
 }
 
-# ── Posteriors ───────────────────────────────────────────────────────────────
+# -- Posteriors ---------------------------------------------------------------
 
 make_posteriors <- function(nb_id = 5, nb_group = 2, seed = 42) {
   data <- make_data(nb_id = nb_id, nb_group = nb_group, seed = seed)
   multi_posterior_mean(data, make_kernel())
 }
 
-# ── sample_distrib (for plot_distrib) ────────────────────────────────────────
+# -- sample_distrib (for plot_distrib) ----------------------------------------
 
 make_sample_distrib <- function(groups = c("G1", "G2"),
                                 ids    = c("ID_1", "ID_2"),
@@ -45,7 +46,7 @@ make_sample_distrib <- function(groups = c("G1", "G2"),
   }))
 }
 
-# ── Hand-crafted posterior list (multi_posterior_mean() output format) ───────
+# -- Hand-crafted posterior list (multi_posterior_mean() output format) -------
 # Format: list(kernels = <named list of matrices keyed by Input value strings>,
 #              groups  = <named list per group with muk, id_to_input, kernel_key, scale>)
 
@@ -75,7 +76,37 @@ make_simple_results <- function(n_groups = 2, n_ids = 2) {
   )
 }
 
-# ── Custom posterior list from explicit (muk, sigma) pairs per group ─────────
+# -- Aligned sample_distrib (mirrors sample_posterior()'s melt exactly) -------
+# Builds a sample_distrib data frame the same way sample_posterior() does
+# (Sample = as.vector(mat), ID = rep(colnames(mat), each = nrow(mat))) from
+# hand-supplied literal per-group matrices, so the draw-alignment invariant
+# compute_multi_diff() relies on holds by construction. Unlike
+# make_sample_distrib() (independent rnorm() per group/id), this lets tests
+# assert exact, hand-verifiable Nb_id/Proba/Cumul_proba values.
+
+make_aligned_sample_distrib <- function(groups_mats) {
+  do.call(rbind, lapply(names(groups_mats), function(g) {
+    mat <- groups_mats[[g]]
+    n   <- nrow(mat)
+    data.frame(
+      ID      = rep(colnames(mat), each = n),
+      Group   = g,
+      Sample  = as.vector(mat),
+      stringsAsFactors = FALSE
+    )
+  }))
+}
+
+# -- multi_diff (for plot_multi_diff / compute_multi_diff dispatch tests) -----
+
+make_multi_diff <- function(nb_id = 5, nb_group = 3, n = 300, seed = 42) {
+  data      <- make_data(nb_id = nb_id, nb_group = nb_group, nb_sample = 5, seed = seed)
+  posterior <- multi_posterior_mean(data, make_kernel())
+  samples   <- sample_posterior(posterior, n = n)
+  compute_multi_diff(samples, results = posterior)
+}
+
+# -- Custom posterior list from explicit (muk, sigma) pairs per group ---------
 # groups_spec: named list, each element = list(
 #   muk   = named numeric vector,
 #   sigma = the RAW kernel matrix (rows/cols in the same order as names(muk)),

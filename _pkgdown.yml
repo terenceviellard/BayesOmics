@@ -1,0 +1,32 @@
+url: https://terenceviellard.github.io/BayesOmics/
+
+template:
+  bootstrap: 5
+
+home:
+  title: BayesOmics
+  description: Bayesian Differential Analysis for Omics Data
+
+navbar:
+  structure:
+    left: [intro, articles, reference]
+    right: [github]
+  components:
+    github:
+      icon: fab fa-github
+      href: https://github.com/terenceviellard/BayesOmics
+
+articles:
+  - title: Getting started
+    navbar: ~
+    contents:
+      - get-started
+  - title: Analyses
+    navbar: Analyses
+    contents:
+      - omics-analysis
+      - sample_size_scenarios
+  - title: Troubleshooting
+    navbar: Troubleshooting
+    contents:
+      - troubleshooting

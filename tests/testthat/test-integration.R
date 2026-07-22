@@ -1,13 +1,12 @@
-# Full pipeline: simu_db → optim_hp → multi_posterior_mean → sample_posterior
-#               → plot_distrib
+# Full pipeline: simu_db -> optim_hp -> multi_posterior_mean -> sample_posterior
+#               -> plot_distrib
 
 test_that("full pipeline runs without error", {
   set.seed(1)
   data <- simu_db(nb_id = 5, nb_group = 2, nb_sample = 3)
   kern <- make_kernel()
-  hp0  <- unlist(keRnel::gt_HPs(kern))
-  hp   <- optim_hp(hp0, data[data$Group == 1, ], 0, kern, 1)
-  kern <- keRnel::set_hyperparameters(kern, hp)
+  hp   <- optim_hp(kern, data[data$Group == 1, ], 0, 1)
+  kern <- do.call(keRnel::kupdate, c(list(kern), as.list(hp)))
   res  <- multi_posterior_mean(data, kern)
   long <- sample_posterior(res, 200)
   expect_s3_class(long, "data.frame")
@@ -66,9 +65,8 @@ test_that("optimized hyperparameters improve posterior fit", {
   data <- simu_db(nb_id = 20, nb_group = 2, nb_sample = 1)
   kern0 <- make_kernel(hp = c(0.1, 0.1))
   kern_opt <- make_kernel()
-  hp0  <- unlist(keRnel::gt_HPs(kern_opt))
-  hp   <- optim_hp(hp0, data[data$Group == 1, ], 0, kern_opt, 1)
-  kern_opt <- keRnel::set_hyperparameters(kern_opt, hp)
+  hp   <- optim_hp(kern_opt, data[data$Group == 1, ], 0, 1)
+  kern_opt <- do.call(keRnel::kupdate, c(list(kern_opt), as.list(hp)))
 
   res0   <- multi_posterior_mean(data, kern0)
   res_op <- multi_posterior_mean(data, kern_opt)

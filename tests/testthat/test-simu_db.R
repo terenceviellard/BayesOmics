@@ -1,11 +1,11 @@
-# ── Structure ─────────────────────────────────────────────────────────────────
+# -- Structure -----------------------------------------------------------------
 
 test_that("simu_db returns a data.frame", {
   expect_s3_class(simu_db(), "data.frame")
 })
 
 test_that("simu_db has exactly the required columns in order", {
-  expect_named(simu_db(), c("ID", "Group", "Sample", "Input", "Output"))
+  expect_named(simu_db(), c("ID", "Group", "Sample", "Input_ID", "Input", "Output"))
 })
 
 test_that("simu_db row count = nb_id * nb_group * nb_sample", {
@@ -34,7 +34,7 @@ test_that("simu_db has correct Sample values per (ID, Group)", {
   }
 })
 
-# ── Types ──────────────────────────────────────────────────────────────────────
+# -- Types ----------------------------------------------------------------------
 
 test_that("simu_db: Input and Output are numeric", {
   data <- simu_db()
@@ -46,7 +46,7 @@ test_that("simu_db: no NA values", {
   expect_false(anyNA(simu_db()))
 })
 
-# ── Input ─────────────────────────────────────────────────────────────────────
+# -- Input ---------------------------------------------------------------------
 
 test_that("simu_db: Input is constant within each (ID, Group) pair across samples", {
   data <- simu_db(nb_id = 4, nb_group = 2, nb_sample = 5)
@@ -85,7 +85,7 @@ test_that("simu_db: Input is shared across groups for the same ID", {
   }
 })
 
-# ── Output ────────────────────────────────────────────────────────────────────
+# -- Output --------------------------------------------------------------------
 
 test_that("simu_db: group effect is diff_group per group level", {
   set.seed(1)
@@ -129,7 +129,7 @@ test_that("simu_db: larger var_sample increases output variance", {
   expect_gt(stats::var(data_high$Output), stats::var(data_low$Output))
 })
 
-# ── Reproducibility ────────────────────────────────────────────────────────────
+# -- Reproducibility ------------------------------------------------------------
 
 test_that("simu_db is reproducible with set.seed", {
   set.seed(123)
@@ -139,19 +139,19 @@ test_that("simu_db is reproducible with set.seed", {
   expect_equal(d1, d2)
 })
 
-# ── Edge cases ─────────────────────────────────────────────────────────────────
+# -- Edge cases -----------------------------------------------------------------
 
 test_that("simu_db works with nb_id = nb_group = nb_sample = 1", {
   data <- simu_db(nb_id = 1, nb_group = 1, nb_sample = 1)
   expect_equal(nrow(data), 1)
-  expect_named(data, c("ID", "Group", "Sample", "Input", "Output"))
+  expect_named(data, c("ID", "Group", "Sample", "Input_ID", "Input", "Output"))
 })
 
 test_that("simu_db works with large nb_id", {
   expect_no_error(simu_db(nb_id = 500, nb_group = 3, nb_sample = 1))
 })
 
-# ── simu_db: input validation (mirrors simu_db_kernel) ──────────────────────
+# -- simu_db: input validation (mirrors simu_db_kernel) ----------------------
 
 test_that("simu_db validates nb_id, nb_group, nb_sample", {
   expect_error(simu_db(nb_id = 0), "nb_id")
@@ -174,12 +174,12 @@ test_that("simu_db allows var_sample = 0 but rejects negative var_sample", {
   expect_error(simu_db(var_sample = -1), "var_sample")
 })
 
-# ── simu_db_kernel: structure ───────────────────────────────────────────────
+# -- simu_db_kernel: structure -----------------------------------------------
 
 test_that("simu_db_kernel returns a data.frame with the expected columns and row count", {
   data <- simu_db_kernel(nb_id = 4, nb_group = 3, nb_sample = 2, kernel = make_kernel())
   expect_s3_class(data, "data.frame")
-  expect_named(data, c("ID", "Group", "Sample", "Input", "Output"))
+  expect_named(data, c("ID", "Group", "Sample", "Input_ID", "Input", "Output"))
   expect_equal(nrow(data), 4 * 3 * 2)
 })
 
@@ -235,7 +235,8 @@ test_that("simu_db_kernel: exposes ground truth (mu_true, base_input) via attrib
   expect_equal(unname(mu_true[["2"]][1] - mu_true[["1"]][1]), 5)
 
   base_input <- attr(data, "base_input")
-  expect_equal(names(base_input), paste0("ID_", 1:4))
+  expect_true(is.matrix(base_input))
+  expect_equal(rownames(base_input), paste0("ID_", 1:4))
 })
 
 test_that("simu_db_kernel: mu_true matches the prior draw when mu_random = TRUE", {
@@ -262,17 +263,16 @@ test_that("simu_db_kernel: Sigma_theta reflects kernel distance across ids, not 
   # apart, for a kernel with positive length scale -- this is the cross-id structure the
   # new generative model relies on (the old model had no such structure at all).
   set.seed(4)
-  ker <- methods::new("SEKernel")
-  ker <- keRnel::set_hyperparameters(ker, c(variance_se = 5, length_scale_se = 10))
+  ker <- keRnel::variance_kernel(variance = 5) * keRnel::se_kernel(length_scale = 10)
   input_mat <- matrix(c(0, 1, 100), ncol = 1)
-  K <- keRnel::pairwise_kernel(ker, input_mat, input_mat)
+  K <- keRnel::evaluate(ker, input_mat, input_mat)
   expect_gt(K[1, 2], K[1, 3])  # id at distance 1 more correlated than id at distance 100
 })
 
 test_that("simu_db_kernel works with nb_id = nb_group = nb_sample = 1", {
   data <- simu_db_kernel(nb_id = 1, nb_group = 1, nb_sample = 1, kernel = make_kernel())
   expect_equal(nrow(data), 1)
-  expect_named(data, c("ID", "Group", "Sample", "Input", "Output"))
+  expect_named(data, c("ID", "Group", "Sample", "Input_ID", "Input", "Output"))
 })
 
 test_that("simu_db_kernel works with large nb_id and nb_sample", {
@@ -286,7 +286,7 @@ test_that("chol_inv_jitter_diag produces a valid, symmetric, PD matrix from a co
   # independent of any particular Input configuration.
   ker <- make_kernel(hp = c(4, 5))
   input_mat <- matrix(rep(10, 4), ncol = 1)
-  raw_cov <- 3 * keRnel::pairwise_kernel(ker, input_mat, input_mat)
+  raw_cov <- 3 * keRnel::evaluate(ker, input_mat, input_mat)
   jittered_cov <- BayesOmics:::chol_inv_jitter_diag(raw_cov, 1e-6)
   expect_equal(dim(jittered_cov), c(4, 4))
   expect_true(isSymmetric(jittered_cov))
@@ -300,7 +300,7 @@ test_that("simu_db_kernel works with nb_group = 1 and several samples", {
   )
 })
 
-# ── simu_db_kernel: Sigma_theta shared across groups ────────────────────────
+# -- simu_db_kernel: Sigma_theta shared across groups ------------------------
 
 test_that("simu_db_kernel: every group shares the same kernel matrix (same Input set)", {
   # Required for multi_posterior_mean() + calculate_group_overlaps() to work across groups.
@@ -311,7 +311,7 @@ test_that("simu_db_kernel: every group shares the same kernel matrix (same Input
   expect_no_error(calculate_group_overlaps(posterior))
 })
 
-# ── simu_db_kernel: mu_random option ────────────────────────────────────────
+# -- simu_db_kernel: mu_random option ----------------------------------------
 
 test_that("simu_db_kernel: mu_random = FALSE (default) is deterministic given the same base profile", {
   set.seed(9)
@@ -336,8 +336,7 @@ test_that("simu_db_kernel: mu_random = TRUE makes the group mean vary with mu_0/
   # With a much larger lambda_0 (tighter prior), the drawn group means should land
   # closer to mu_0 on average across many simulated datasets than with a small lambda_0.
   set.seed(11)
-  ker <- methods::new("SEKernel")
-  ker <- keRnel::set_hyperparameters(ker, c(variance_se = 25, length_scale_se = 5))
+  ker <- keRnel::variance_kernel(variance = 25) * keRnel::se_kernel(length_scale = 5)
   draw_group1_mean <- function(lambda_0) {
     data <- simu_db_kernel(nb_id = 6, nb_group = 1, nb_sample = 1, kernel = ker,
                             var_sample = 0.01, mu_random = TRUE, mu_0 = 20, lambda_0 = lambda_0)
@@ -348,11 +347,16 @@ test_that("simu_db_kernel: mu_random = TRUE makes the group mean vary with mu_0/
   expect_lt(stats::sd(tight), stats::sd(loose))
 })
 
-# ── simu_db_kernel: input validation ────────────────────────────────────────
+# -- simu_db_kernel: input validation ----------------------------------------
 
-test_that("simu_db_kernel requires a valid AbstractKernel object", {
-  expect_error(simu_db_kernel(), "kernel")
-  expect_error(simu_db_kernel(kernel = list(pairwise_kernel = function(x) diag(length(x)))), "kernel")
+test_that("simu_db_kernel uses a default SE(1,1) kernel when kernel = NULL", {
+  expect_no_error(simu_db_kernel())
+  data <- simu_db_kernel()
+  expect_s3_class(data, "data.frame")
+})
+
+test_that("simu_db_kernel requires a valid keRnel kernel object when kernel is not NULL", {
+  expect_error(simu_db_kernel(kernel = list(evaluate = function(x) diag(length(x)))), "kernel")
   expect_error(simu_db_kernel(kernel = "not a kernel"), "kernel")
 })
 
@@ -369,7 +373,7 @@ test_that("simu_db_kernel validates range_input and range_output", {
 })
 
 test_that("simu_db_kernel validates diff_group and var_sample", {
-  expect_error(simu_db_kernel(diff_group = c(1, 2), kernel = make_kernel()), "diff_group")
+  expect_error(simu_db_kernel(diff_group = c(1, 2, 3), kernel = make_kernel()), "diff_group")
   expect_error(simu_db_kernel(var_sample = 0, kernel = make_kernel()), "var_sample")
   expect_error(simu_db_kernel(var_sample = -1, kernel = make_kernel()), "var_sample")
 })
@@ -378,7 +382,7 @@ test_that("simu_db_kernel validates pen_diag", {
   expect_error(simu_db_kernel(pen_diag = -1, kernel = make_kernel()), "pen_diag")
 })
 
-# ── chol_inv_jitter_diag: bounded recursion ─────────────────────────────────
+# -- chol_inv_jitter_diag: bounded recursion ---------------------------------
 
 test_that("chol_inv_jitter_diag warns when a large jitter (relative to pen_diag) was needed", {
   mat <- diag(c(-50, 5, 5))  # one large negative eigenvalue forces many jitter doublings
@@ -404,4 +408,93 @@ test_that("chol_inv_jitter_diag stops with an informative error instead of recur
 test_that("chol_inv_jitter_diag returns the matrix unchanged when pen_diag = 0 and already PD", {
   mat <- diag(2) * 4
   expect_equal(BayesOmics:::chol_inv_jitter_diag(mat, pen_diag = 0), mat)
+})
+
+# -- simu_db_kernel: nb_sample as vector -------------------------------------
+
+test_that("simu_db_kernel: scalar nb_sample expands to all groups", {
+  data <- simu_db_kernel(nb_id = 3, nb_group = 3, nb_sample = 4)
+  for (g in unique(data$Group)) {
+    expect_equal(length(unique(data$Sample[data$Group == g])), 4)
+  }
+})
+
+test_that("simu_db_kernel: vector nb_sample sets per-group replicate counts", {
+  data <- simu_db_kernel(nb_id = 4, nb_group = 3, nb_sample = c(2, 5, 10))
+  expect_equal(max(data$Sample[data$Group == "1"]), 2)
+  expect_equal(max(data$Sample[data$Group == "2"]), 5)
+  expect_equal(max(data$Sample[data$Group == "3"]), 10)
+  expect_equal(nrow(data), 4 * (2 + 5 + 10))
+})
+
+test_that("simu_db_kernel: nb_sample vector of wrong length errors", {
+  expect_error(simu_db_kernel(nb_group = 2, nb_sample = c(3, 5, 7)), "nb_sample")
+})
+
+test_that("simu_db_kernel: nb_sample vector with non-integer errors", {
+  expect_error(simu_db_kernel(nb_group = 2, nb_sample = c(3, 2.5)), "nb_sample")
+})
+
+# -- simu_db_kernel: diff_group as vector ------------------------------------
+
+test_that("simu_db_kernel: diff_group vector sets per-group offsets", {
+  set.seed(1)
+  data <- simu_db_kernel(nb_id = 100, nb_group = 3, nb_sample = 1,
+                          diff_group = c(0, 5, 5), var_sample = 0.01)
+  m <- tapply(data$Output, data$Group, mean)
+  expect_equal(unname(m["2"] - m["1"]), 5, tolerance = 0.5)
+  expect_equal(unname(m["3"] - m["1"]), 5, tolerance = 0.5)
+})
+
+test_that("simu_db_kernel: diff_group vector of wrong length errors", {
+  expect_error(simu_db_kernel(nb_group = 2, diff_group = c(0, 3, 6)), "diff_group")
+})
+
+# -- simu_db_kernel: group_labels ---------------------------------------------
+
+test_that("simu_db_kernel: group_labels sets Group column values", {
+  data <- simu_db_kernel(nb_group = 2, group_labels = c("Control", "Treatment"))
+  expect_setequal(unique(data$Group), c("Control", "Treatment"))
+})
+
+test_that("simu_db_kernel: mu_true and base_input attributes use group_labels as names", {
+  data <- simu_db_kernel(nb_group = 2, group_labels = c("A", "B"))
+  expect_equal(names(attr(data, "mu_true")), c("A", "B"))
+})
+
+test_that("simu_db_kernel: group_labels of wrong length errors", {
+  expect_error(simu_db_kernel(nb_group = 2, group_labels = c("a", "b", "c")), "group_labels")
+})
+
+test_that("simu_db_kernel: duplicate group_labels errors", {
+  expect_error(simu_db_kernel(nb_group = 2, group_labels = c("x", "x")), "group_labels")
+})
+
+# -- simu_db_kernel: integer_input + input_grid -------------------------------
+
+test_that("simu_db_kernel: integer_input = TRUE produces integer-valued Input", {
+  set.seed(1)
+  data <- simu_db_kernel(nb_id = 8, integer_input = TRUE, range_input = c(0, 100))
+  expect_equal(data$Input, round(data$Input))
+})
+
+test_that("simu_db_kernel: integer_input = TRUE produces distinct Input values", {
+  set.seed(1)
+  data <- simu_db_kernel(nb_id = 8, integer_input = TRUE, range_input = c(0, 100))
+  expect_equal(length(unique(data$Input)), 8)
+})
+
+test_that("simu_db_kernel: input_grid = TRUE produces a regular integer grid", {
+  data <- simu_db_kernel(nb_id = 5, integer_input = TRUE, input_grid = TRUE,
+                          range_input = c(0, 100))
+  inputs <- sort(unique(data$Input))
+  diffs  <- diff(inputs)
+  expect_equal(length(unique(round(diffs))), 1)  # evenly spaced
+})
+
+test_that("simu_db_kernel: integer_input errors when range too small", {
+  expect_error(
+    simu_db_kernel(nb_id = 10, integer_input = TRUE, range_input = c(0, 5)),
+    "distinct"
+  )
 })
