@@ -1,4 +1,4 @@
-# ── plot_distrib: validation ──────────────────────────────────────────────────
+# -- plot_distrib: validation --------------------------------------------------
 
 test_that("plot_distrib errors when sample_distrib lacks required columns", {
   bad <- data.frame(x = 1:10)
@@ -10,7 +10,7 @@ test_that("plot_distrib warns when multiple ids provided", {
   expect_warning(plot_distrib(sd), "IDs|Multiple")
 })
 
-# ── plot_distrib: single group ────────────────────────────────────────────────
+# -- plot_distrib: single group ------------------------------------------------
 
 test_that("plot_distrib returns a ggplot for single group", {
   sd  <- make_sample_distrib(groups = "G1", ids = "ID_1")
@@ -40,7 +40,7 @@ test_that("plot_distrib: mean_bar=FALSE suppresses the vline layer", {
   expect_false("GeomVline" %in% layer_classes)
 })
 
-# ── plot_distrib: two groups ───────────────────────────────────────────────────
+# -- plot_distrib: two groups ---------------------------------------------------
 
 test_that("plot_distrib returns a ggplot when comparing two groups", {
   sd <- make_sample_distrib()
@@ -73,7 +73,7 @@ test_that("plot_distrib: prob_CI affects CI region width", {
   expect_s3_class(gg50, "ggplot")
 })
 
-# ── plot_distrib: rendering ───────────────────────────────────────────────────
+# -- plot_distrib: rendering ---------------------------------------------------
 
 test_that("plot_distrib can be rendered without error", {
   sd <- make_sample_distrib(groups = "G1", ids = "ID_1")
@@ -87,7 +87,7 @@ test_that("plot_distrib two-group rendering completes without error", {
   expect_no_error(ggplot2::ggplot_build(gg))
 })
 
-# ── plot_distrib: group-count dispatch ───────────────────────────────────────
+# -- plot_distrib: group-count dispatch ---------------------------------------
 
 test_that("plot_distrib: a single group in the data gives a single-group plot", {
   sd <- make_sample_distrib(groups = "G1", ids = "ID_1")
@@ -155,7 +155,7 @@ test_that("plot_distrib: multi-group summary respects top_n_pairs (fewer facets 
   expect_true(inherits(facet_gg, "gtable") || inherits(facet_gg, "grob"))
 })
 
-# ── plot_distrib_each_pair ────────────────────────────────────────────────────
+# -- plot_distrib_each_pair ----------------------------------------------------
 
 test_that("plot_distrib_each_pair returns one ggplot per group pair, named", {
   sd <- make_sample_distrib(groups = c("G1", "G2", "G3", "G4"), ids = "ID_1")
@@ -176,7 +176,7 @@ test_that("plot_distrib_each_pair scales to many groups without summary logic (a
   expect_length(plots, choose(6, 2))
 })
 
-# ── plot_group_overlap_heatmap ────────────────────────────────────────────────
+# -- plot_group_overlap_heatmap ------------------------------------------------
 
 test_that("plot_group_overlap_heatmap returns a ggplot", {
   sd <- make_sample_distrib(groups = c("G1", "G2", "G3"), ids = "ID_1")
@@ -207,7 +207,7 @@ test_that("compute_pairwise_overlap: well-separated groups give low overlap, ide
   expect_gt(mat["near", "same_as_near"], mat["near", "far"])
 })
 
-# ── plot_posterior_overlap ───────────────────────────────────────────────────
+# -- plot_posterior_overlap ---------------------------------------------------
 
 test_that("plot_posterior_overlap returns a single ggplot for two groups", {
   sd <- make_sample_distrib(groups = c("G1", "G2"), ids = "ID_1")
@@ -261,7 +261,7 @@ test_that("compute_overlap_distrib: identical-distribution groups give an OVL cl
   expect_lt(info_far$ov, 0.05)
 })
 
-# ── plot_distrib: boundary / edge-case behaviour ─────────────────────────────
+# -- plot_distrib: boundary / edge-case behaviour -----------------------------
 
 test_that("plot_distrib: prob_CI = 0 and prob_CI = 1 do not error", {
   sd <- make_sample_distrib(groups = "G1", ids = "ID_1", n = 500)
@@ -291,7 +291,7 @@ test_that("plot_distrib: requesting an id absent from the data errors (documente
   expect_error(plot_distrib(sd, group1 = "G1", id = "NOT_A_REAL_ID"))
 })
 
-# ── plot_posterior_mean ───────────────────────────────────────────────────────
+# -- plot_posterior_mean -------------------------------------------------------
 
 test_that("plot_posterior_mean errors when sample_distrib lacks required columns", {
   bad <- data.frame(x = 1:10)
@@ -327,4 +327,146 @@ test_that("plot_posterior_mean can be rendered without error", {
   sd <- make_sample_distrib(groups = c("G1", "G2"), ids = c("ID_1", "ID_2"))
   gg <- plot_posterior_mean(sd)
   expect_no_error(ggplot2::ggplot_build(gg))
+})
+
+# -- build_multi_diff_panel ----------------------------------------------------
+
+test_that("build_multi_diff_panel: cumulative = FALSE gives a bar chart with a reference vline", {
+  db_plot <- tibble::tibble(
+    Group1 = "G1", Group2 = "G2", Nb_id = 0:3,
+    Proba = c(0.1, 0.4, 0.4, 0.1), Cumul_proba = cumsum(c(0.1, 0.4, 0.4, 0.1))
+  )
+  gg <- BayesOmics:::build_multi_diff_panel(db_plot, "G1", "G2", cumulative = FALSE)
+  layer_classes <- vapply(gg$layers, function(l) class(l$geom)[1], character(1))
+  expect_true("GeomBar" %in% layer_classes)
+  expect_true("GeomVline" %in% layer_classes)
+})
+
+test_that("build_multi_diff_panel: cumulative = TRUE gives a line chart with no bar/vline", {
+  db_plot <- tibble::tibble(
+    Group1 = "G1", Group2 = "G2", Nb_id = 0:3,
+    Proba = c(0.1, 0.4, 0.4, 0.1), Cumul_proba = cumsum(c(0.1, 0.4, 0.4, 0.1))
+  )
+  gg <- BayesOmics:::build_multi_diff_panel(db_plot, "G1", "G2", cumulative = TRUE)
+  layer_classes <- vapply(gg$layers, function(l) class(l$geom)[1], character(1))
+  expect_true("GeomLine" %in% layer_classes)
+  expect_false("GeomBar" %in% layer_classes)
+  expect_false("GeomVline" %in% layer_classes)
+})
+
+test_that("build_multi_diff_panel: overlap_coef = NULL omits the title", {
+  db_plot <- tibble::tibble(Group1 = "G1", Group2 = "G2", Nb_id = 0:1, Proba = c(0.5, 0.5), Cumul_proba = c(0.5, 1))
+  gg <- BayesOmics:::build_multi_diff_panel(db_plot, "G1", "G2", cumulative = FALSE, overlap_coef = NULL)
+  expect_null(gg$labels$title)
+})
+
+test_that("build_multi_diff_panel: overlap_coef adds a title containing the value", {
+  db_plot <- tibble::tibble(Group1 = "G1", Group2 = "G2", Nb_id = 0:1, Proba = c(0.5, 0.5), Cumul_proba = c(0.5, 1))
+  gg <- BayesOmics:::build_multi_diff_panel(db_plot, "G1", "G2", cumulative = FALSE, overlap_coef = 0.42)
+  expect_true(grepl("0.42", deparse(gg$labels$title)))
+})
+
+test_that("build_multi_diff_panel can be rendered without error", {
+  db_plot <- tibble::tibble(
+    Group1 = "G1", Group2 = "G2", Nb_id = 0:3,
+    Proba = c(0.1, 0.4, 0.4, 0.1), Cumul_proba = cumsum(c(0.1, 0.4, 0.4, 0.1))
+  )
+  gg <- BayesOmics:::build_multi_diff_panel(db_plot, "G1", "G2", cumulative = FALSE)
+  expect_no_error(ggplot2::ggplot_build(gg))
+})
+
+# -- build_posterior_mean_plot / plot_posterior_mean equivalence ---------------
+
+test_that("build_posterior_mean_plot renders the same layer/scale shape as plot_posterior_mean", {
+  sd      <- make_sample_distrib(groups = c("G1", "G2"), ids = c("ID_1", "ID_2"))
+  mean_db <- dplyr::summarise(
+    dplyr::group_by(sd, ID, Group), Mean = mean(Sample), .groups = "drop"
+  )
+
+  gg_direct <- BayesOmics:::build_posterior_mean_plot(mean_db)
+  gg_via_fn <- plot_posterior_mean(sd)
+
+  expect_equal(
+    vapply(gg_direct$layers, function(l) class(l$geom)[1], character(1)),
+    vapply(gg_via_fn$layers, function(l) class(l$geom)[1], character(1))
+  )
+})
+
+# -- plot_multi_diff: validation ------------------------------------------------
+
+test_that("plot_multi_diff errors when multi_diff lacks Diff_proba/Diff_mean", {
+  expect_error(plot_multi_diff(list(foo = 1)), "compute_multi_diff")
+})
+
+test_that("plot_multi_diff errors when Diff_proba is missing required columns", {
+  bad <- list(Diff_proba = data.frame(x = 1), Diff_mean = data.frame(ID = "a", Group = "G1", Mean = 1))
+  expect_error(plot_multi_diff(bad), "Diff_proba")
+})
+
+test_that("plot_multi_diff errors when Diff_mean is missing required columns and plot_mean = TRUE", {
+  bad <- list(
+    Diff_proba = tibble::tibble(Group1 = "G1", Group2 = "G2", Nb_id = 0:1, Proba = c(0.5, 0.5), Cumul_proba = c(0.5, 1)),
+    Diff_mean  = data.frame(x = 1)
+  )
+  expect_error(plot_multi_diff(bad, plot_mean = TRUE), "Diff_mean")
+})
+
+test_that("plot_multi_diff errors with fewer than two groups", {
+  bad <- list(
+    Diff_proba = tibble::tibble(Group1 = character(0), Group2 = character(0), Nb_id = integer(0),
+                                 Proba = numeric(0), Cumul_proba = numeric(0)),
+    Diff_mean  = tibble::tibble(ID = character(0), Group = character(0), Mean = numeric(0))
+  )
+  expect_error(plot_multi_diff(bad), "at least two groups")
+})
+
+# -- plot_multi_diff: dispatch / layout -----------------------------------------
+
+test_that("plot_multi_diff returns a grid for exactly two groups", {
+  multi_diff <- make_multi_diff(nb_id = 3, nb_group = 2, n = 50)
+  res <- plot_multi_diff(multi_diff)
+  expect_true(inherits(res, "gtable") || inherits(res, "grob"))
+})
+
+test_that("plot_multi_diff returns a grid for more than two groups", {
+  multi_diff <- make_multi_diff(nb_id = 3, nb_group = 4, n = 50)
+  res <- plot_multi_diff(multi_diff)
+  expect_true(inherits(res, "gtable") || inherits(res, "grob"))
+})
+
+test_that("plot_multi_diff: panel count is choose(n_groups, 2) + 1 when plot_mean = TRUE", {
+  multi_diff <- make_multi_diff(nb_id = 3, nb_group = 4, n = 50)
+  res <- plot_multi_diff(multi_diff, plot_mean = TRUE)
+  n_panels <- sum(!vapply(res$grobs, is.null, logical(1)))
+  expect_equal(n_panels, choose(4, 2) + 1)
+})
+
+test_that("plot_multi_diff: panel count is choose(n_groups, 2) when plot_mean = FALSE", {
+  multi_diff <- make_multi_diff(nb_id = 3, nb_group = 4, n = 50)
+  res <- plot_multi_diff(multi_diff, plot_mean = FALSE)
+  n_panels <- sum(!vapply(res$grobs, is.null, logical(1)))
+  expect_equal(n_panels, choose(4, 2))
+})
+
+test_that("plot_multi_diff: panel count for exactly two groups (special-cased layout)", {
+  multi_diff <- make_multi_diff(nb_id = 3, nb_group = 2, n = 50)
+  res <- plot_multi_diff(multi_diff, plot_mean = TRUE)
+  n_panels <- sum(!vapply(res$grobs, is.null, logical(1)))
+  expect_equal(n_panels, 2)
+})
+
+test_that("plot_multi_diff: cumulative = TRUE does not error", {
+  multi_diff <- make_multi_diff(nb_id = 3, nb_group = 3, n = 50)
+  expect_no_error(plot_multi_diff(multi_diff, cumulative = TRUE))
+})
+
+# -- plot_multi_diff: end-to-end integration ------------------------------------
+
+test_that("plot_multi_diff works end-to-end via simu_db -> multi_posterior_mean -> sample_posterior -> compute_multi_diff", {
+  data      <- simu_db(nb_id = 6, nb_group = 3, nb_sample = 5, diff_group = 5)
+  kern      <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
+  posterior <- multi_posterior_mean(data, kern)
+  samples   <- sample_posterior(posterior, n = 200)
+  multi_diff <- compute_multi_diff(samples, results = posterior)
+  expect_no_error(plot_multi_diff(multi_diff))
 })

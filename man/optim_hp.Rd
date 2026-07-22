@@ -5,36 +5,54 @@
 \title{Optimize Hyperparameters for a kernel (with additive kernel support)}
 \usage{
 optim_hp(
-  hp,
-  db,
-  prior_mean,
   kern,
+  db,
+  prior_mean = NULL,
   prior_cov,
   pen_diag = 1e-06,
   verbose = FALSE,
   max_iter = 1000,
   factr = 1e+07,
   pgtol = 0,
-  track_trace = FALSE
+  track_trace = FALSE,
+  group_col = NULL
 )
 }
 \arguments{
-\item{hp}{A vector of initial hyperparameters to be optimized. Length must
-match the number of hyperparameters of \code{kern}.}
+\item{kern}{A kernel object inheriting from keRnel's \code{kernel} class. Its
+construction values (e.g. \code{se_kernel(length_scale = 2)}) are the
+optimization's starting point -- there is no separate \code{hp} argument.
+Optimizing in \code{keRnel::get_free_params(kern)}'s free/unconstrained
+space (rather than by natural-space hyperparameter name) is what lets
+two sibling sub-kernels sharing a bare hyperparameter name (e.g.
+\code{se_kernel(length_scale=1) + se_kernel(length_scale=3)}) be given
+genuinely different starting values and be fit independently -- a case
+\code{keRnel::kupdate()} cannot express, since it updates every
+occurrence of a bare name at once.}
 
-\item{db}{The dataset used for optimization. Must contain columns \code{Input} and \code{Output}.}
+\item{db}{The dataset used for optimization. Must contain columns \code{Input} and
+\code{Output} (plus \code{Input_ID} for a multi-dimensional Input; see
+\code{\link{normalize_input_cols}}). If it also contains a \code{Sample} column
+and the same \code{Input} positions are repeated across samples (i.e.
+replicated measurements), the function automatically uses the correct
+replicated likelihood: it builds a pxp kernel matrix on the \emph{unique}
+input positions and sums independent log N(y_s; mu, K_p) terms over each
+sample s. Without this correction, same-position observations in
+different samples would be treated as perfectly correlated, biasing all
+hyperparameter estimates.}
 
-\item{prior_mean}{Prior mean: either a scalar or a vector of length \code{nrow(db)}.}
-
-\item{kern}{A kernel object inheriting from \code{AbstractKernel} (keRnel package).}
+\item{prior_mean}{Prior mean: either a scalar or a vector of length equal to
+the number of unique \code{Input} positions in \code{db}. Required unless
+\code{group_col} is supplied (in which case it is ignored -- see \code{group_col}).}
 
 \item{prior_cov}{Prior covariance: either a scalar (diagonal value) or a
-square matrix of size \code{nrow(db)}.}
+square matrix of size equal to the number of unique \code{Input} positions in \code{db}.}
 
 \item{pen_diag}{Jitter added to the diagonal for numerical stability. Defaults to \code{1e-6}.}
 
 \item{verbose}{If \code{FALSE} (default), returns the optimized parameter vector;
-if \code{TRUE}, returns the full \code{optim} result list.}
+if \code{TRUE}, returns the full \code{optim} result list (with the fitted kernel
+object attached as \code{result$kern}).}
 
 \item{max_iter}{Maximum number of L-BFGS-B iterations. Defaults to \code{1000}.}
 
@@ -52,24 +70,45 @@ during the optimization (hyperparameter values, NLL or gradient norm,
 elapsed time) and attaches it as a \code{trace} data.frame. Defaults to
 \code{FALSE}, in which case nothing is recorded and the return value is
 identical to before this parameter existed.}
+
+\item{group_col}{Name of a column in \code{db} (e.g. \code{"Group"}) identifying
+which experimental group each observation belongs to. When supplied,
+pools replicates from every group into a single fit -- centering each
+group on its own empirical mean first (\code{prior_mean} is then ignored,
+forced to \code{0}) -- and adds the exact closed-form REML correction for
+the degrees of freedom spent estimating those group means:
+\eqn{\text{NLL}_\text{REML}(\theta) = \text{NLL}_\text{demeaned}(\theta) -
+(G/2)\log|\Sigma'_\theta|}, \eqn{G} = number of distinct groups. Without
+this, pooling multiple groups under one shared \code{prior_mean} lets an
+unmodeled between-group mean shift bias the fitted kernel variance
+(severely, and roughly quadratically in the shift) -- see
+\code{dev/optim_exploration/NOTES_math.md} and
+\verb{dev/optim_exploration/10_group_mean_shift_confound.R} for the full
+derivation and empirical quantification. Requires a balanced Group x
+Sample design (the same features observed for every group/sample
+combination); errors otherwise. Defaults to \code{NULL} (no group handling,
+behavior identical to before this parameter existed).}
 }
 \value{
-If \code{verbose} is \code{FALSE}, a named vector of optimized hyperparameters,
-with the optimizer's \code{convergence} code and final objective \code{value} attached
-as attributes (\code{attr(result, "convergence")}, \code{attr(result, "value")}) so
-convergence can be checked without re-running with \code{verbose = TRUE}; a
-\code{convergence} of \code{0} means success. If \code{track_trace = TRUE}, a \code{trace}
-data.frame (one row per objective/gradient evaluation) is also attached
-as \code{attr(result, "trace")}. Otherwise (\code{verbose = TRUE}) the full list
-returned by \code{\link[stats:optim]{stats::optim()}}, with \code{result$trace} added when
-\code{track_trace = TRUE}.
+If \code{verbose} is \code{FALSE}, a named vector of optimized hyperparameters
+in natural (constrained) space (via \code{keRnel::get_trainable_params()}),
+with the optimizer's \code{convergence} code and final objective \code{value}
+attached as attributes (\code{attr(result, "convergence")}, \code{attr(result, "value")}) so convergence can be checked without re-running with \code{verbose = TRUE}; a \code{convergence} of \code{0} means success. If \code{track_trace = TRUE}, a
+\code{trace} data.frame (one row per objective/gradient evaluation) is also
+attached as \code{attr(result, "trace")}. Otherwise (\code{verbose = TRUE}) the full
+list returned by \code{\link[stats:optim]{stats::optim()}}, with \code{result$kern} (the fitted kernel
+object) and \code{result$trace} (when \code{track_trace = TRUE}) added.
 }
 \description{
 Optimize Hyperparameters for a kernel (with additive kernel support)
 }
 \examples{
 data <- simu_db(nb_id = 8, nb_group = 1, nb_sample = 5)
-kern <- methods::new("SEKernel")
-hp <- unlist(keRnel::gt_HPs(kern))
-optim_hp(hp, data, prior_mean = 0, kern = kern, prior_cov = 1)
+kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
+optim_hp(kern, data, prior_mean = 0, prior_cov = 1)
+
+# Pooling replicates from multiple groups into a single fit, without an
+# unmodeled group mean shift biasing the fitted variance:
+data2 <- simu_db(nb_id = 8, nb_group = 3, nb_sample = 5, diff_group = 4)
+optim_hp(kern, data2, prior_cov = 1, group_col = "Group")
 }

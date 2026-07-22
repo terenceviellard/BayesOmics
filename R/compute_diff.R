@@ -1,4 +1,6 @@
 #' @importFrom stats pnorm pchisq
+#' @importFrom dplyr %>%
+#' @importFrom rlang .data
 
 #' @title Compute Overlapping Coefficient between Groups
 #'
@@ -55,119 +57,159 @@
 #'
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5, diff_group = 5)
-#' kern <- methods::new("SEKernel")
-#' kern <- keRnel::set_hyperparameters(kern, c(variance_se = 1, length_scale_se = 1))
+#' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
 #' posterior <- multi_posterior_mean(data, kern)
 #' calculate_group_overlaps(posterior)
 calculate_group_overlaps <- function(results, max_groups_warn = 50, max_dim_warn = 500) {
-  if (!is.list(results) || !all(c("kernels", "groups") %in% names(results))) {
-    stop("'results' must be the list returned by multi_posterior_mean() (with 'kernels' and 'groups').")
-  }
-  groups      <- results$groups
-  group_names <- names(groups)
-  num_groups  <- length(group_names)
+  compute_group_diff(results, ovl_metric(), max_groups_warn = max_groups_warn, max_dim_warn = max_dim_warn)
+}
 
-  required_group_fields <- c("muk", "id_to_input", "kernel_key", "scale")
-  missing_fields <- vapply(groups, function(g) !all(required_group_fields %in% names(g)), logical(1))
-  if (any(missing_fields)) {
+## Extracts an (n_draws x n_ids) matrix of posterior draws for one group, with
+## columns in the caller-supplied `ids` order. Relies on sample_posterior()'s
+## documented melt order (Sample = as.vector(mat), one n_draws x n_ids matrix
+## per group) being preserved in `sample_distrib`: filtering once for the
+## whole group and splitting locally (rather than filtering once per ID) is a
+## single O(n_rows) pass, and the per-ID length check is the closest available
+## sanity check on that ordering invariant actually holding.
+#' @noRd
+extract_draw_matrix <- function(sample_distrib, group, ids) {
+  sub   <- sample_distrib %>% dplyr::filter(.data$Group == group, .data$ID %in% ids)
+  by_id <- split(sub$Sample, sub$ID)
+  lens  <- vapply(by_id[ids], length, integer(1))
+  if (length(unique(lens)) > 1) {
     stop(paste0(
-      "Each group in results$groups must contain 'muk', 'id_to_input', 'kernel_key' and 'scale'; ",
-      "missing in group(s): ", paste(group_names[missing_fields], collapse = ", "), "."
+      "Group '", group, "' has IDs with different numbers of posterior draws in ",
+      "'sample_distrib' (", paste(sort(unique(lens)), collapse = ", "), "); ",
+      "compute_multi_diff() requires every ID within a group to contribute the same ",
+      "number of draws, in the same draw order, as produced by sample_posterior()."
     ))
   }
+  mat <- do.call(cbind, by_id[ids])
+  colnames(mat) <- ids
+  mat
+}
 
-  if (num_groups >= 2) {
-    d <- length(groups[[1]]$muk)
-    # TODO: no test in tests/testthat/ verifies that this warning actually
-    # fires at the documented thresholds (max_groups_warn/max_dim_warn) --
-    # only the message text seems covered, not the boundary condition itself
-    # (e.g. num_groups == max_groups_warn vs max_groups_warn + 1).
-    if (num_groups > max_groups_warn || d > max_dim_warn) {
-      warning(sprintf(
-        paste0(
-          "calculate_group_overlaps: comparing %d groups with ~%d shared IDs requires ",
-          "up to %d matrix inversions of size %dx%d (cost is O(G^2 * d^3)); this may be slow."
-        ),
-        num_groups, d, choose(num_groups, 2), d, d
+#' @title Compute the Multivariate Distribution of Group Differences
+#'
+#' @description
+#' For every pair of groups present in \code{sample_distrib}, computes the
+#' empirical distribution (over posterior draws) of the number of IDs for
+#' which group1's posterior draw exceeds group2's -- a multivariate,
+#' uncertainty-aware complement to the single scalar overlapping coefficient
+#' returned by \code{\link{calculate_group_overlaps}}.
+#'
+#' This relies on a documented invariant of \code{\link{sample_posterior}}'s
+#' output: for a given group, its \code{n} draws are melted from a single
+#' \code{n x n_ids} matrix (\code{Sample = as.vector(mat)}), so filtering
+#' \code{sample_distrib} by \code{(Group, ID)} recovers draws in a consistent
+#' order across every ID in that group, without needing an explicit draw index
+#' column. This only holds if \code{sample_distrib}'s row order has not been
+#' shuffled since \code{sample_posterior()} produced it, and every ID within a
+#' group contributes the same number of draws (checked, and an error raised
+#' otherwise; the actual per-draw pairing itself cannot be independently
+#' verified from a melted data frame with no explicit draw index).
+#'
+#' @param sample_distrib A data frame, typically coming from the
+#'    \code{sample_posterior()} function, containing the following columns:
+#'    \code{ID}, \code{Group} and \code{Sample}.
+#' @param results An optional list, typically from
+#'    \code{\link{multi_posterior_mean}}, with elements \code{kernels} and
+#'    \code{groups}. If supplied, \code{\link{calculate_group_overlaps}} is
+#'    used to attach an exact \code{Overlap_coef} to the result. If \code{NULL}
+#'    (default), \code{Overlap_coef} is omitted.
+#'
+#' @return A list with elements:
+#'   \describe{
+#'     \item{\code{Diff_proba}}{A tibble with columns \code{Group1}, \code{Group2},
+#'       \code{Nb_id} (from 0 to the number of shared IDs), \code{Proba} (the
+#'       probability mass at that count) and \code{Cumul_proba} (its cumulative sum).}
+#'     \item{\code{Diff_mean}}{A tibble with columns \code{ID}, \code{Group} and
+#'       \code{Mean}, the posterior mean of each (ID, Group) pair.}
+#'     \item{\code{Overlap_coef}}{A tibble with columns \code{Group1}, \code{Group2}
+#'       and \code{Overlap_coef}. Only present when \code{results} is supplied.}
+#'   }
+#' @export
+#'
+#' @examples
+#' data <- simu_db(nb_id = 8, nb_group = 3, nb_sample = 5, diff_group = 5)
+#' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
+#' posterior <- multi_posterior_mean(data, kern)
+#' samples <- sample_posterior(posterior, n = 500)
+#' multi_diff <- compute_multi_diff(samples, results = posterior)
+#' multi_diff$Diff_proba
+compute_multi_diff <- function(sample_distrib, results = NULL) {
+  required_cols <- c("ID", "Group", "Sample")
+  if (!all(required_cols %in% names(sample_distrib))) {
+    stop(paste0("The following columns are missing: ",
+                paste(setdiff(required_cols, names(sample_distrib)), collapse = ", ")))
+  }
+
+  groups <- sample_distrib$Group %>% unique() %>% sort()
+  if (length(groups) < 2) {
+    stop("compute_multi_diff() requires at least two groups in 'sample_distrib'.")
+  }
+  pairs <- utils::combn(groups, 2, simplify = FALSE)
+
+  proba_rows <- lapply(pairs, function(p) {
+    g1 <- p[1]
+    g2 <- p[2]
+
+    ids1 <- sample_distrib %>% dplyr::filter(.data$Group == g1) %>% dplyr::pull(.data$ID) %>% unique()
+    ids2 <- sample_distrib %>% dplyr::filter(.data$Group == g2) %>% dplyr::pull(.data$ID) %>% unique()
+    if (!setequal(ids1, ids2)) {
+      stop(paste0(
+        "Groups '", g1, "' and '", g2, "' do not share the same set of IDs: ",
+        "only in '", g1, "': [", paste(setdiff(ids1, ids2), collapse = ", "), "]; ",
+        "only in '", g2, "': [", paste(setdiff(ids2, ids1), collapse = ", "), "]."
       ))
     }
-  }
+    shared_ids <- sort(ids1)
 
-  overlap_matrix <- diag(num_groups)
-  rownames(overlap_matrix) <- colnames(overlap_matrix) <- group_names
-
-  if (num_groups < 2) return(overlap_matrix)
-
-  for (i in seq_len(num_groups - 1)) {
-    for (j in (i + 1):num_groups) {
-      group1 <- groups[[i]]
-      group2 <- groups[[j]]
-
-      ids1 <- names(group1$muk)
-      ids2 <- names(group2$muk)
-      if (!setequal(ids1, ids2)) {
-        stop(paste0(
-          "Groups '", group_names[i], "' and '", group_names[j], "' do not share the same set of IDs: ",
-          "only in '", group_names[i], "': [", paste(setdiff(ids1, ids2), collapse = ", "), "]; ",
-          "only in '", group_names[j], "': [", paste(setdiff(ids2, ids1), collapse = ", "), "]."
-        ))
-      }
-
-      if (!identical(group1$kernel_key, group2$kernel_key)) {
-        stop(paste0(
-          "Groups '", group_names[i], "' and '", group_names[j], "' do not share the same kernel matrix ",
-          "(different sets of Input values). The closed-form overlap requires both groups' posterior ",
-          "covariances to derive from the same raw kernel matrix, only scaled differently by 'scale'."
-        ))
-      }
-
-      mu1    <- group1$muk[ids1]
-      mu2    <- group2$muk[ids1]
-      d      <- length(ids1)
-      scale1 <- group1$scale
-      scale2 <- group2$scale
-      delta  <- mu1 - mu2
-      c_ratio <- scale1 / scale2
-
-      scale_rel_tol <- 1e-6
-      near_equal_scale <- isTRUE(scale1 == scale2) || abs(c_ratio - 1) < scale_rel_tol
-
-      if (near_equal_scale) {
-        if (!isTRUE(scale1 == scale2)) {
-          warning(sprintf(
-            paste0(
-              "calculate_group_overlaps: groups '%s' and '%s' have nearly identical ",
-              "scales (scale1 = %.6g, scale2 = %.6g, ratio = %.10f); the c != 1 formula ",
-              "is numerically unstable this close to c = 1, so they are treated as equal ",
-              "using the larger posterior covariance (smaller scale)."
-            ),
-            group_names[i], group_names[j], scale1, scale2, c_ratio
-          ))
-        }
-        smaller_group <- if (scale1 <= scale2) group1 else group2
-        Sigma_eq <- get_sigmak(smaller_group, results$kernels)[ids1, ids1, drop = FALSE]
-        inv_eq   <- chol_inv_jitter(Sigma_eq, pen_diag = 1e-6)
-        D2       <- as.numeric(t(delta) %*% inv_eq %*% delta)
-        OV <- 2 * stats::pnorm(-sqrt(D2) / 2)
-      } else {
-        Sigma1 <- get_sigmak(group1, results$kernels)[ids1, ids1, drop = FALSE]
-        inv1   <- chol_inv_jitter(Sigma1, pen_diag = 1e-6)
-        D2     <- as.numeric(t(delta) %*% inv1 %*% delta)
-        lambda1 <- D2 / (1 - c_ratio)^2
-        lambda2 <- c_ratio * D2 / (1 - c_ratio)^2
-        t       <- (D2 - d * (1 - c_ratio) * log(c_ratio)) / (1 - c_ratio)^2
-        if (c_ratio < 1) {
-          OV <- stats::pchisq(c_ratio * t, df = d, ncp = lambda1) +
-            1 - stats::pchisq(t, df = d, ncp = lambda2)
-        } else {
-          OV <- stats::pchisq(t, df = d, ncp = lambda2) +
-            1 - stats::pchisq(c_ratio * t, df = d, ncp = lambda1)
-        }
-      }
-
-      overlap_matrix[group_names[i], group_names[j]] <- OV
-      overlap_matrix[group_names[j], group_names[i]] <- OV
+    mat1 <- extract_draw_matrix(sample_distrib, g1, shared_ids)
+    mat2 <- extract_draw_matrix(sample_distrib, g2, shared_ids)
+    if (nrow(mat1) != nrow(mat2)) {
+      stop(paste0(
+        "Groups '", g1, "' and '", g2, "' have different numbers of posterior draws (",
+        nrow(mat1), " vs ", nrow(mat2), "); compute_multi_diff() requires the same number ",
+        "of draws for every group being compared (as produced by a single ",
+        "sample_posterior(results, n) call)."
+      ))
     }
+
+    n_ids   <- length(shared_ids)
+    n_draws <- nrow(mat1)
+    counts  <- rowSums(mat1 > mat2)
+    tab     <- tabulate(counts + 1, nbins = n_ids + 1)
+    proba   <- tab / n_draws
+    cumul   <- cumsum(proba)
+
+    tibble::tibble(Group1 = g1, Group2 = g2, Nb_id = 0:n_ids, Proba = proba, Cumul_proba = cumul)
+  })
+  Diff_proba <- dplyr::bind_rows(proba_rows)
+
+  Diff_mean <- sample_distrib %>%
+    dplyr::group_by(.data$ID, .data$Group) %>%
+    dplyr::summarise(Mean = mean(.data$Sample), .groups = "drop")
+
+  out <- list(Diff_proba = Diff_proba, Diff_mean = Diff_mean)
+
+  if (!is.null(results)) {
+    if (!is.list(results) || !all(c("kernels", "groups") %in% names(results))) {
+      stop("'results' must be the list returned by multi_posterior_mean() (with 'kernels' and 'groups'), or NULL.")
+    }
+    result_groups <- names(results$groups)
+    if (!setequal(result_groups, groups)) {
+      stop(paste0(
+        "'results' groups do not match the groups present in 'sample_distrib': ",
+        "only in 'results': [", paste(setdiff(result_groups, groups), collapse = ", "), "]; ",
+        "only in 'sample_distrib': [", paste(setdiff(groups, result_groups), collapse = ", "), "]."
+      ))
+    }
+    overlap_mat <- calculate_group_overlaps(results)
+    out$Overlap_coef <- dplyr::bind_rows(lapply(pairs, function(p) {
+      tibble::tibble(Group1 = p[1], Group2 = p[2], Overlap_coef = overlap_mat[p[1], p[2]])
+    }))
   }
-  return(overlap_matrix)
+
+  out
 }

@@ -2,12 +2,13 @@
 % Please edit documentation in R/simu_db.R
 \name{simu_db}
 \alias{simu_db}
-\title{Generate a Synthetic Dataset Tailored for ProteoBayes}
+\title{Generate a Synthetic Dataset for BayesOmics}
 \usage{
 simu_db(
   nb_id = 5,
   nb_group = 2,
   nb_sample = 5,
+  nb_dim = 1,
   range_output = c(0, 50),
   range_input = c(0, 50),
   diff_group = 3,
@@ -21,16 +22,18 @@ simu_db(
 
 \item{nb_sample}{An integer, indicating the number of samples in the data for each id (i.e., the repetitions of the same experiment).}
 
+\item{nb_dim}{An integer, indicating the number of Input dimensions per id. Defaults to \code{1} (a single scalar Input per id, emitted with \code{Input_ID = 1}); \code{nb_dim > 1} emits one row per (Group, ID, Sample, Input_ID), \code{Output} repeated identically across the \code{nb_dim} rows of one observation.}
+
 \item{range_output}{A 2-sized vector, indicating the range of values for output from which to pick a mean value for each id}
 
-\item{range_input}{A 2-sized vector, indicating the range of values for input from which to pick a mean value for each id}
+\item{range_input}{A 2-sized vector, indicating the range of values for input from which to pick a mean value for each id (applied independently to every Input dimension)}
 
 \item{diff_group}{A number, indicating the mean difference between consecutive groups.}
 
 \item{var_sample}{A number, indicating the noise variance for each new sample of a id}
 }
 \value{
-A full dataset of synthetic data.
+A full dataset of synthetic data, with columns \code{ID}, \code{Group}, \code{Sample}, \code{Input_ID}, \code{Input}, \code{Output}.
 }
 \description{
 Simulate a basic complete training dataset.

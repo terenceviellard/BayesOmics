@@ -1,0 +1,148 @@
+---
+title: "Troubleshooting: common errors and how to fix them"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Troubleshooting: common errors and how to fix them}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(keRnel)
+library(BayesOmics)
+```
+
+This page lists the errors and warnings you are most likely to run into, what they
+mean, and how to fix them. Each one is reproduced below with `try()` so the message
+matches exactly what you would see in your own console.
+
+## Optimization did not converge
+
+```{r, warning = TRUE}
+data <- simu_db(nb_id = 20)
+kern <- variance_kernel(variance = 0.01) * se_kernel(length_scale = 0.01)
+opt  <- optim_hp(kern, data, prior_mean = 0, prior_cov = 1, max_iter = 1)
+```
+
+**Cause:** L-BFGS-B stopped before satisfying its convergence criterion -- usually
+because `max_iter` is too low, or the data/kernel combination is poorly conditioned
+(`pen_diag` too small, or the kernel's initial construction values far from a good optimum).
+
+**Fix:** increase `max_iter`, try different initial values when constructing `kern`, or increase `pen_diag`.
+You don't need `verbose = TRUE` to check: the returned vector always carries the
+optimizer's status as attributes:
+
+```{r}
+attr(opt, "convergence")  # 0 means success
+attr(opt, "value")        # final (negative log-likelihood) objective value
+```
+
+## Groups do not share the same set of IDs
+
+```{r, error = TRUE}
+bad_results <- list(
+  kernels = list(k = diag(2)),
+  groups  = list(
+    A = list(muk = c(ID_1 = 0, ID_2 = 1), id_to_input = c(ID_1 = 1, ID_2 = 2), kernel_key = "k", scale = 1),
+    B = list(muk = c(ID_1 = 0, ID_3 = 1), id_to_input = c(ID_1 = 1, ID_3 = 2), kernel_key = "k", scale = 1)
+  )
+)
+calculate_group_overlaps(bad_results)
+```
+
+**Cause:** `calculate_group_overlaps()` compares two groups ID by ID; it requires
+every group to be measured on the exact same set of IDs.
+
+**Fix:** restrict the comparison to groups that share all their IDs, or make sure
+your input data frame has one row per (ID, Group, Sample) for every ID in every group
+before calling `multi_posterior_mean()`.
+
+## Groups do not share the same kernel matrix
+
+**Cause:** two groups have different sets of `Input` values (e.g. different genomic
+positions), so their posterior covariances don't derive from the same raw kernel
+matrix. The closed-form overlap formula used by `calculate_group_overlaps()` only
+applies when both groups share one kernel matrix, scaled differently by `scale`.
+
+**Fix:** make sure every group in your data is measured at the same `Input` values
+for the same `ID`s -- `simu_db()` and `simu_db_kernel()` do this by construction. If
+your real data genuinely has different `Input` values per group, you cannot compare
+those two groups with `calculate_group_overlaps()` directly.
+
+## Each ID must map to a single Input value within its group
+
+```{r, error = TRUE}
+data_bad <- data.frame(
+  ID     = c("ID_1", "ID_1"),
+  Group  = "A",
+  Output = c(0, 0),
+  Input  = c(5, 6)  # same ID, two different Input values
+)
+multi_posterior_mean(data_bad, se_kernel(length_scale = 1))
+```
+
+**Cause:** within a single group, `ID` must uniquely determine `Input` (e.g. one CpG
+site cannot sit at two different genomic positions in the same condition). This
+usually comes from a data-cleaning issue -- duplicated rows, or an `ID` reused across
+two physically different positions.
+
+**Fix:** check for duplicate/inconsistent `(Group, ID)` rows in your input data
+frame with `dplyr::distinct(data, Group, ID, Input)` and resolve the inconsistency
+before calling `multi_posterior_mean()`.
+
+## Group has IDs with different numbers of observations
+
+```{r, error = TRUE}
+data_uneven <- data.frame(
+  ID     = c("ID_1", "ID_1", "ID_2"),
+  Group  = "A",
+  Sample = c(1, 2, 1),
+  Output = c(0, 1, 0),
+  Input  = c(5, 5, 6)
+)
+multi_posterior_mean(data_uneven, se_kernel(length_scale = 1))
+```
+
+**Cause:** `multi_posterior_mean()` uses a single observation count per group (the
+posterior `scale` is `n_obs + lambda_0`); it requires every ID within a group to have
+the same number of replicate samples.
+
+**Fix:** make sure every ID in a group has the same number of `Sample` rows -- e.g.
+by filling in missing replicates or subsetting to a balanced design. See
+`vignette("sample_size_scenarios")` for designs with different replicate counts
+*across* groups (which is supported), as opposed to across IDs *within* the same
+group (which is not).
+
+## Matrix could not be made positive-definite
+
+**Cause:** internally, `chol_inv_jitter()` adds a small jitter to a covariance
+matrix's diagonal to make it invertible, increasing the jitter geometrically up to
+20 times. If it still fails, the matrix is likely severely ill-conditioned -- e.g.
+near-duplicate `Input` values combined with a very large kernel length scale.
+
+**Fix:** increase `pen_diag`, reduce the kernel's length scale, or check for
+near-duplicate `Input` values in your data.
+
+## Empty groups
+
+**Cause:** a `Group` value in your data has no `ID` or no `Input` value associated
+with it -- usually an artefact of filtering the data frame before calling
+`multi_posterior_mean()`.
+
+**Fix:** drop unused factor levels / filter out the offending rows before fitting,
+e.g. `data <- droplevels(data[data$Group %in% kept_groups, ])`.
+
+## Go further
+
+| Vignette | What you will find |
+|---|---|
+| `vignette("omics-analysis")` | The complete model walkthrough  -  kernel choice, hyperparameter fitting, posterior computation, and every plot function  -  on both a two-group and a multi-group example. |
+| `vignette("sample_size_scenarios")` | How unbalanced designs (different replicate counts per group) affect posterior width and the final OVL, and why the comparison remains valid even with strongly unequal counts. |

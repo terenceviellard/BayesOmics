@@ -1,4 +1,4 @@
-# ── multi_posterior_mean: input validation ────────────────────────────────────
+# -- multi_posterior_mean: input validation ------------------------------------
 
 test_that("multi_posterior_mean errors when required columns are missing", {
   data <- make_data()
@@ -35,9 +35,30 @@ test_that("multi_posterior_mean errors when mu_0 is not numeric", {
   expect_error(multi_posterior_mean(data, kern, mu_0 = "0"), "mu_0")
 })
 
+test_that("multi_posterior_mean errors when data$Input contains NaN", {
+  data <- make_data()
+  kern <- make_kernel()
+  data$Input[1] <- NaN
+  expect_error(multi_posterior_mean(data, kern), "NaN|Inf|NA")
+})
+
+test_that("multi_posterior_mean errors when data$Output contains Inf", {
+  data <- make_data()
+  kern <- make_kernel()
+  data$Output[1] <- Inf
+  expect_error(multi_posterior_mean(data, kern), "NaN|Inf|NA")
+})
+
+test_that("multi_posterior_mean errors when data$Output contains NA", {
+  data <- make_data()
+  kern <- make_kernel()
+  data$Output[1] <- NA_real_
+  expect_error(multi_posterior_mean(data, kern), "NaN|Inf|NA")
+})
+
 test_that("multi_posterior_mean errors when an ID maps to several distinct Input values within a group", {
   # Two different IDs sharing the same single Input value in a group: 2
-  # distinct IDs but only 1 distinct Input value -> muk/vec_name length mismatch.
+  # distinct IDs but only 1 distinct Input position -> muk/id_to_input length mismatch.
   data <- data.frame(
     ID     = c("ID_1", "ID_2"),
     Group  = "A",
@@ -45,15 +66,14 @@ test_that("multi_posterior_mean errors when an ID maps to several distinct Input
     Input  = c(5, 5)
   )
   kern <- make_kernel()
-  expect_error(multi_posterior_mean(data, kern), "distinct Input value")
+  expect_error(multi_posterior_mean(data, kern), "distinct Input position")
 })
 
-# ── multi_posterior_mean: muk/sigmak alignment (regression for the former
-# alphabetical-ID vs Input-value-order misalignment bug) ─────────────────────
+# -- multi_posterior_mean: muk/sigmak alignment (regression for the former
+# alphabetical-ID vs Input-value-order misalignment bug) ---------------------
 
 test_that("multi_posterior_mean: muk and sigmak (via get_sigmak) are correctly aligned by ID", {
-  ker <- methods::new("SEKernel")
-  ker <- keRnel::set_hyperparameters(ker, c(variance_se = 10, length_scale_se = 200))
+  ker <- keRnel::variance_kernel(variance = 10) * keRnel::se_kernel(length_scale = 200)
 
   # dist(ID_1, ID_2) = 90, dist(ID_1, ID_3) = 100, dist(ID_2, ID_3) = 10
   data <- data.frame(
@@ -66,7 +86,7 @@ test_that("multi_posterior_mean: muk and sigmak (via get_sigmak) are correctly a
   g   <- res$groups[["A"]]
   sig <- BayesOmics:::get_sigmak(g, res$kernels)
 
-  pk <- function(xi, xj) as.numeric(keRnel::pairwise_kernel(ker, as.matrix(xi), as.matrix(xj))) / 2
+  pk <- function(xi, xj) as.numeric(keRnel::evaluate(ker, as.matrix(xi), as.matrix(xj))) / 2
   true_cov_12 <- pk(100, 10)  # cov(ID_1, ID_2)
   true_cov_13 <- pk(100, 0)   # cov(ID_1, ID_3)
   true_cov_23 <- pk(10, 0)    # cov(ID_2, ID_3)
@@ -77,7 +97,7 @@ test_that("multi_posterior_mean: muk and sigmak (via get_sigmak) are correctly a
   expect_equal(unname(sig[ids == "ID_2", ids == "ID_3"]), true_cov_23, tolerance = 1e-8)
 })
 
-# ── multi_posterior_mean: return structure ─────────────────────────────────────
+# -- multi_posterior_mean: return structure -------------------------------------
 
 test_that("multi_posterior_mean returns a list with kernels and groups", {
   res <- make_posteriors()
@@ -135,7 +155,7 @@ test_that("multi_posterior_mean: muk names match ID values", {
   }
 })
 
-# ── multi_posterior_mean: numerics ─────────────────────────────────────────────
+# -- multi_posterior_mean: numerics ---------------------------------------------
 
 test_that("multi_posterior_mean: larger lambda_0 pulls muk toward mu_0", {
   data <- make_data(nb_id = 10)
@@ -195,7 +215,7 @@ test_that("multi_posterior_mean: Group converted to character if integer", {
   expect_true(all(vapply(names(res$groups), is.character, logical(1))))
 })
 
-# ── multi_posterior_mean: edge cases ──────────────────────────────────────────
+# -- multi_posterior_mean: edge cases ------------------------------------------
 
 test_that("multi_posterior_mean works with nb_id = 1", {
   data <- make_data(nb_id = 1, nb_group = 2)
@@ -210,7 +230,7 @@ test_that("multi_posterior_mean works with a single group", {
   expect_length(res$groups, 1)
 })
 
-# ── sample_posterior: validation ──────────────────────────────────────────────
+# -- sample_posterior: validation ----------------------------------------------
 
 test_that("sample_posterior errors on empty list", {
   expect_error(sample_posterior(list(), 10), "kernels.*groups|groups.*kernels")
@@ -232,7 +252,7 @@ test_that("sample_posterior errors when a group is missing required elements", {
   expect_error(sample_posterior(bad, 10))
 })
 
-# ── sample_posterior: return structure ─────────────────────────────────────────
+# -- sample_posterior: return structure -----------------------------------------
 
 test_that("sample_posterior returns a data.frame in long format", {
   res  <- make_simple_results()

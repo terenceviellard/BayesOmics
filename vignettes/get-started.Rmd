@@ -1,0 +1,250 @@
+---
+title: "Get started with BayesOmics"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Get started with BayesOmics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+```{r setup, message=FALSE, warning=FALSE}
+library(keRnel)
+library(BayesOmics)
+library(ggplot2)
+```
+
+The BayesOmics package provides a suite of tools for performing Bayesian kernel-based differential analysis.
+
+## Data format
+
+Every function in BayesOmics expects a long-format data frame with these
+columns:
+
+| Column     | Meaning                                                                    |
+|------------|-----------------------------------------------------------------------------|
+| `ID`       | Feature identifier (e.g. a peptide, a CpG site, a metabolite)              |
+| `Group`    | Experimental condition the observation belongs to                          |
+| `Sample`   | Replicate identifier within a group                                        |
+| `Input_ID` | Which Input dimension a row belongs to (see below)                        |
+| `Input`    | The covariate the kernel operates on (e.g. genomic position)              |
+| `Output`   | The observed measurement                                                   |
+
+A single-covariate analysis (the case throughout this vignette) has one
+`Input_ID` value per feature; a data frame with just `Input` (no `Input_ID`)
+also works unchanged -- BayesOmics fills in `Input_ID` automatically. A
+multi-dimensional Input (several covariates per feature, e.g. genomic
+position *and* measurement time) instead has one row per `Input_ID` value,
+with `Output` repeated identically across the rows of one observation.
+
+## Choosing and initializing a kernel
+
+The kernel encodes which features should be treated as correlated. The most
+common choice is the **Squared Exponential (SE) kernel**:
+
+$$
+K_{\text{SE}}(x, x') = \sigma^2 \exp\!\left(-\frac{\|x - x'\|^2}{2\ell^2}\right)
+$$
+
+where $\sigma^2$ is the signal variance and $\ell$ is the length scale  -  how
+far apart two features can be before their correlation becomes negligible.
+
+Create an SE kernel and set its hyperparameters to the values that will be
+used to generate synthetic data:
+
+```{r}
+kern_true <- variance_kernel(variance = 10) * se_kernel(length_scale = 80)
+```
+
+## Simulating data
+
+`simu_db_kernel()` generates a dataset whose cross-feature covariance matches
+the generative model assumed by `multi_posterior_mean()`: for each group,
+the vector of outputs across all features is drawn jointly from a
+multivariate normal whose covariance is given by the kernel, plus independent
+measurement noise. Each replicate is an independent draw from that same
+distribution:
+
+$$
+y_n \mid \mu_g \sim \mathcal{N}(\mu_g,\; \Sigma_\theta + \sigma^2 I),
+$$
+
+```{r}
+set.seed(42)
+data <- simu_db_kernel(
+  kernel      = kern_true,
+  nb_id       = 10,
+  nb_group    = 2,
+  nb_sample   = 8,
+  diff_group  = 0.8,
+  var_sample  = 5,
+  range_input = c(0, 200)
+)
+head(data)
+```
+
+
+## Combining kernels: adding a Noise term
+
+Kernels can be combined with `+` (additive) or `*` (product). Adding a
+`NoiseKernel` nugget to absorb feature-level measurement noise independently
+of the spatial signal is not just a nice-to-have here: with realistic sample
+sizes, fitting a spatial kernel *alone* to noisy data tends to produce an
+almost-singular covariance matrix (see the note further down), which silently
+breaks the differential-analysis step. Always fit and reuse the combined
+kernel, not just its spatial part:
+
+```{r}
+se_part    <- variance_kernel(variance = 1) * se_kernel(length_scale = 1)
+noise_part <- white_noise_kernel(noise = 1)
+kern       <- se_part + noise_part
+```
+
+Using an SE + Noise kernel for optimization separates the spatial signal
+($\sigma^2$, $\ell$) from the measurement noise ($c$).
+
+## Optimizing hyperparameters
+
+`optim_hp()` fits all hyperparameters by maximizing the marginal likelihood of
+the output values.
+
+```{r}
+groupe1=data[data$Group == unique(data$Group)[1], ]
+prior_mean   <- mean(groupe1$Output)
+
+hp_opt <- optim_hp(kern, groupe1, prior_mean = prior_mean, prior_cov = 1)
+hp_opt
+```
+
+`length_scale` (~ 98) lands in the same ballpark as its simulation value
+(80), confirming that correlation extends over most of the 200-unit axis.
+`variance` (~ 15.5) and `noise` (~ 4.5) partially trade off against each
+other with only 8 replicates per group -- their individual values are less
+tightly recovered than `length_scale` -- but that is not a problem: what
+matters for the next step is fitting *both* together, so the resulting
+covariance correctly separates spatial signal from measurement noise.
+
+Update the kernel with the fitted values, **keeping both the spatial and noise hyperparameters**:
+
+```{r}
+kern_opt <- do.call(kupdate, c(list(kern), as.list(hp_opt)))
+```
+
+Do not rebuild a plain SE kernel from only `variance` and `length_scale`
+here, discarding `noise`. With this many features and a length scale this
+large relative to the input range, a pure-SE kernel matrix is nearly
+singular (its condition number can exceed 1e9). The differential analysis
+below still runs on such a matrix, but the resulting overlap coefficient
+becomes numerically meaningless -- typically collapsing to exactly 0
+regardless of the true difference between groups. Keeping the fitted
+`noise` term is what keeps the covariance well-conditioned.
+
+## Computing posteriors
+
+`multi_posterior_mean()` applies the Normal-Normal conjugate update to every
+group at once:
+
+$$
+p(\boldsymbol{\mu} \mid y_1, \dots, y_N,\, \Sigma_{\hat\theta})
+= \mathcal{N}\!\left(
+    \boldsymbol{\mu};\;
+    \frac{\lambda_0\,\mu_0 + \sum_{n=1}^N y_n}{N + \lambda_0},\;
+    \frac{1}{N + \lambda_0}\,\Sigma_{\hat\theta}
+  \right)
+$$
+
+where $\Sigma_{\hat\theta}$ is the kernel matrix at the optimized
+hyperparameters, $\mu_0$ and $\lambda_0$ are the prior mean and precision, and
+$N$ is the number of replicates.
+
+```{r}
+posterior <- multi_posterior_mean(data, kern_opt, mu_0 = prior_mean, lambda_0 = 1)
+print(posterior)
+```
+
+Draw samples from the posteriors for plotting and the overlap calculation:
+
+```{r}
+samples <- sample_posterior(posterior, n = 2000)
+```
+
+## Differential analysis
+
+`calculate_group_overlaps()` returns the pairwise Overlapping Coefficient (OVL)
+between every pair of groups. Groups with different sample sizes are fully
+supported  -  see `vignette("sample_size_scenarios")` for a detailed exploration
+of how replicate counts affect posterior width and the resulting OVL.
+OVL = 1 means identical posteriors (no
+differential signal); OVL ~ 0 means fully separated profiles (strong
+differential signal):
+
+$$
+\text{OVL} = 2\,\Phi\!\left(-\tfrac{\delta}{2}\right)
+$$
+
+where $\delta$ is the Mahalanobis distance between the two groups' posterior
+means under the posterior covariance of the reference group, and $\Phi$ is the
+standard normal CDF.
+
+```{r}
+calculate_group_overlaps(posterior)
+```
+
+Overlapping coefficient can be seen as a single-number summary of the differential signal on the whole region of interest. It is useful for ranking features, but it is sensible to curse of dimensionality: the more features you include, the more likely it is that the joint overlap will be low. The OVL is a global measure, and it does not tell you which features are driving the difference.
+`compute_multi_diff()` complements the single OVL number with an
+uncertainty-aware breakdown: from the posterior draws, it computes the
+empirical distribution of the number of features for which group 1's draw
+exceeds group 2's, and (when given `results`) attaches the same OVL computed
+above for reference. `plot_multi_diff()` turns this into a compact figure --
+one panel per group pair, titled with that pair's OVL, plus the
+posterior-mean panel already seen above:
+
+```{r}
+multi_diff <- compute_multi_diff(samples, results = posterior)
+multi_diff$Diff_proba
+```
+
+```{r, fig.alt = "Empirical distribution of the number of features where group 1's posterior draw exceeds group 2's, spread broadly across 0 to 10 features rather than spiked at either extreme, alongside the posterior-mean-per-feature panel"}
+plot_multi_diff(multi_diff)
+```
+
+The bar-chart panel is spread broadly across 0 to 10 features, rather than
+spiked at either extreme -- group 1 does not exceed group 2 on every feature,
+nor on none. This is consistent with a real, but partial and non-caricatural,
+differential signal: exactly the kind of nuance the single OVL number above
+cannot show on its own.
+
+## Individual feature plots
+`plot_posterior_mean()` shows the posterior mean at every feature, coloured by
+group  -  useful to see which features drive the differential signal:
+
+```{r}
+plot_posterior_mean(samples)
+```
+
+`plot_posterior_overlap()` overlays both groups' posterior densities for one
+feature and shades the region of overlap, giving a visual counterpart of the
+OVL coefficient:
+
+```{r}
+plot_posterior_overlap(samples,
+                       group1 = unique(samples$Group)[1],
+                       group2 = unique(samples$Group)[2],
+                       id     = unique(samples$ID)[1])
+```
+
+## Go further
+
+| Vignette | What you will find |
+|---|---|
+| `vignette("omics-analysis")` | Full worked examples  -  realistic biological context, kernel composition (SE + Noise), HP interpretation, two-group and four-group dose-response designs, and every plot function. |
+| `vignette("sample_size_scenarios")` | How unbalanced designs affect posterior width and the OVL, and why the comparison remains valid with strongly unequal sample sizes. |
+| `vignette("troubleshooting")` | Exact error messages you may encounter, what causes each of them, and the targeted fix. |
