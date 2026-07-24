@@ -340,6 +340,42 @@ evaluate_metric.marginal_metric <- function(metric, mu1, mu2, Sigma1, Sigma2, sc
   mean(vals)
 }
 
+#' @title Total Variation Distance
+#' @description Total variation distance between the two groups' posteriors,
+#'   \eqn{TV(f,g) = 1 - \int \min(f,g)\,dx}. This is a general identity for
+#'   any two densities (not an approximation specific to Gaussians): since
+#'   \eqn{\int(f+g)\,dx = 2}, \eqn{\int|f-g|\,dx = 2 - 2\int\min(f,g)\,dx}, so
+#'   \eqn{TV = \tfrac12\int|f-g|\,dx = 1 - \int\min(f,g)\,dx} always. Because
+#'   \code{\link{ovl_metric}} already computes \eqn{\int\min(f,g)\,dx} in
+#'   closed form, TVD is just \code{1 - } that value -- a thin decorator
+#'   around it rather than a new closed-form derivation. Forwards
+#'   \code{\link{requires_shared_kernel}}/\code{\link{is_symmetric_metric}} to
+#'   the wrapped metric.
+#' @param base A \code{distance_metric} object whose value is an overlap
+#'   coefficient (\code{\link{ovl_metric}} by default). Passing anything else
+#'   is meaningless (TVD is only defined via an overlap coefficient), but
+#'   left as a parameter so a decorated OVL variant (e.g. \code{marginal_metric(ovl_metric())})
+#'   can be turned into its own TVD analogue too.
+#' @return A \code{distance_metric} object.
+#' @export
+tvd_metric <- function(base = ovl_metric()) {
+  if (!inherits(base, "distance_metric")) {
+    stop("'base' must be a distance_metric object.")
+  }
+  structure(list(base = base), class = c("tvd_metric", "distance_metric"))
+}
+
+#' @export
+requires_shared_kernel.tvd_metric <- function(metric) requires_shared_kernel(metric$base)
+
+#' @export
+is_symmetric_metric.tvd_metric <- function(metric) is_symmetric_metric(metric$base)
+
+#' @export
+evaluate_metric.tvd_metric <- function(metric, mu1, mu2, Sigma1, Sigma2, scale1 = NULL, scale2 = NULL, same_kernel = FALSE, ...) {
+  1 - evaluate_metric(metric$base, mu1, mu2, Sigma1, Sigma2, scale1 = scale1, scale2 = scale2, same_kernel = same_kernel, ...)
+}
+
 #' @title Fraction of Individually Significant Features
 #' @description For each shared ID, computes the z-score
 #'   \eqn{(\mu_{1k}-\mu_{2k})/\sqrt{\Sigma_{1,kk}+\Sigma_{2,kk}}} and returns
