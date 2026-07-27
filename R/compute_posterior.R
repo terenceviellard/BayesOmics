@@ -13,13 +13,29 @@ format_input_key <- function(x) sprintf("%.17g", x)
 #'   itself now always produces, D >= 1). Both are turned into one
 #'   `row_input_key()` string per ID, so re-indexing the shared kernel matrix
 #'   works identically either way.
+#' @details `group_entry$obs_noise` (added by `multi_posterior_mean()`, default
+#'   0) is a fixed, known observation-noise variance to add back to the
+#'   kernel-derived covariance before dividing by `scale`. It exists because
+#'   HP-fitting workflows built around `optim_hp(..., prior_cov = )` (see
+#'   `R/optim_kernel.R`'s `resolve_prior_cov()`) add `prior_cov` as a SEPARATE
+#'   additive nugget to the likelihood, so the fitted kernel's own HPs (e.g.
+#'   `variance`) only capture whatever correlated structure remains BEYOND
+#'   that fixed floor -- not the full marginal noise variance the posterior
+#'   formula `Sigma_theta / (N + lambda_0)` assumes. Passing the SAME
+#'   `prior_cov` used at fit time as `obs_noise` here reconstructs the correct
+#'   total variance. Left at its default of 0, behavior is unchanged from
+#'   before this parameter existed (kernel HPs assumed to already capture the
+#'   full marginal variance themselves, e.g. via an explicit `NoiseKernel()`
+#'   term composed into the kernel).
 get_sigmak <- function(group_entry, kernels) {
   ids <- names(group_entry$muk)
   id_to_input <- group_entry$id_to_input
   sub <- if (is.matrix(id_to_input)) id_to_input[ids, , drop = FALSE] else id_to_input[ids]
   input_keys <- row_input_key(sub)
   kern_mat <- kernels[[group_entry$kernel_key]]
-  sigmak <- kern_mat[input_keys, input_keys, drop = FALSE] / group_entry$scale
+  noise <- group_entry$obs_noise
+  if (is.null(noise)) noise <- 0
+  sigmak <- (kern_mat[input_keys, input_keys, drop = FALSE] + diag(noise, length(ids))) / group_entry$scale
   dimnames(sigmak) <- list(ids, ids)
   sigmak
 }
@@ -46,6 +62,19 @@ get_sigmak <- function(group_entry, kernels) {
 #' @param kern A kernel object (from the keRnel package) used to compute pairwise covariances.
 #' @param mu_0 Prior mean parameter.
 #' @param lambda_0 Prior precision parameter.
+#' @param obs_noise Fixed, known observation-noise variance to add back into
+#'   the posterior covariance (see `get_sigmak()`'s `@details`). Needed
+#'   whenever `kern`'s hyperparameters were fit with `optim_hp(..., prior_cov
+#'   = )` treating that same value as a separate additive nugget rather than
+#'   composing it into `kern` itself (e.g. via a `NoiseKernel()` term) --
+#'   otherwise the reported credible interval only reflects uncertainty about
+#'   whatever correlated structure the kernel captures BEYOND that fixed
+#'   noise floor, which collapses toward zero whenever there is little such
+#'   structure to find (the exact mechanism behind BayesOmics's severe
+#'   under-coverage on ProteoBayes's own univariate/multivariate paper
+#'   scenarios, `dev/benchmark_server/E11_proteobayes_paper_replay_server.R`).
+#'   Defaults to 0 (previous behavior: `kern`'s own HPs assumed to already
+#'   capture the full marginal variance).
 #' @return A list with two elements:
 #'   \describe{
 #'     \item{\code{kernels}}{A named list of kernel/correlation matrices, one per
@@ -57,10 +86,11 @@ get_sigmak <- function(group_entry, kernels) {
 #'       a named vector of posterior means keyed by ID; \code{id_to_input}, an
 #'       n_ids x D matrix (\code{rownames = ID}) giving that group's ID -> Input
 #'       position mapping; \code{kernel_key}, which entry of \code{kernels} to
-#'       use; and \code{scale}, the divisor (\code{n_obs + lambda_0}) applied to
-#'       that kernel matrix to get the posterior covariance. The (internal)
-#'       \code{get_sigmak()} helper reconstructs the actual (ID-aligned)
-#'       posterior covariance matrix for a group.}
+#'       use; \code{scale}, the divisor (\code{n_obs + lambda_0}) applied to
+#'       that kernel matrix to get the posterior covariance; and
+#'       \code{obs_noise} (this call's value, reused by `get_sigmak()`). The
+#'       (internal) \code{get_sigmak()} helper reconstructs the actual
+#'       (ID-aligned) posterior covariance matrix for a group.}
 #'   }
 #' @export
 #'
@@ -69,7 +99,7 @@ get_sigmak <- function(group_entry, kernels) {
 #' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
 #' posterior <- multi_posterior_mean(data, kern)
 #' posterior$groups[["1"]]$muk
-multi_posterior_mean <- function(data, kern, mu_0 = 1, lambda_0 = 1) {
+multi_posterior_mean <- function(data, kern, mu_0 = 1, lambda_0 = 1, obs_noise = 0) {
   # FIXME: mu_0 defaults to 1, which is unusual for a Gaussian prior mean
   # (0 would be the conventional uninformative default). Verify this is
   # intentional (e.g. tied to a specific use case) and document the
@@ -235,7 +265,8 @@ multi_posterior_mean <- function(data, kern, mu_0 = 1, lambda_0 = 1) {
       muk         = group_data$muk[[i]],
       id_to_input = id_to_input,
       kernel_key  = vec_hash,
-      scale       = group_data$n_obs[i] + lambda_0
+      scale       = group_data$n_obs[i] + lambda_0,
+      obs_noise   = obs_noise
     )
   })
   names(groups_list) <- group_data$group

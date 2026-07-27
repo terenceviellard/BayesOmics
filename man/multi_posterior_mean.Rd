@@ -4,7 +4,7 @@
 \alias{multi_posterior_mean}
 \title{Compute Posterior Means for Different Groups}
 \usage{
-multi_posterior_mean(data, kern, mu_0 = 1, lambda_0 = 1)
+multi_posterior_mean(data, kern, mu_0 = 1, lambda_0 = 1, obs_noise = 0)
 }
 \arguments{
 \item{data}{A data frame containing the data to be analyzed. Must include columns 'Group', 'ID', 'Output', and 'Input' (plus 'Input_ID' for a multi-dimensional Input).}
@@ -14,6 +14,19 @@ multi_posterior_mean(data, kern, mu_0 = 1, lambda_0 = 1)
 \item{mu_0}{Prior mean parameter.}
 
 \item{lambda_0}{Prior precision parameter.}
+
+\item{obs_noise}{Fixed, known observation-noise variance to add back into
+the posterior covariance (see \code{get_sigmak()}'s \verb{@details}). Needed
+whenever \code{kern}'s hyperparameters were fit with \code{optim_hp(..., prior_cov = )} treating that same value as a separate additive nugget rather than
+composing it into \code{kern} itself (e.g. via a \code{NoiseKernel()} term) --
+otherwise the reported credible interval only reflects uncertainty about
+whatever correlated structure the kernel captures BEYOND that fixed
+noise floor, which collapses toward zero whenever there is little such
+structure to find (the exact mechanism behind BayesOmics's severe
+under-coverage on ProteoBayes's own univariate/multivariate paper
+scenarios, \code{dev/benchmark_server/E11_proteobayes_paper_replay_server.R}).
+Defaults to 0 (previous behavior: \code{kern}'s own HPs assumed to already
+capture the full marginal variance).}
 }
 \value{
 A list with two elements:
@@ -27,10 +40,11 @@ with that same set of positions (no duplication).}
 a named vector of posterior means keyed by ID; \code{id_to_input}, an
 n_ids x D matrix (\code{rownames = ID}) giving that group's ID -> Input
 position mapping; \code{kernel_key}, which entry of \code{kernels} to
-use; and \code{scale}, the divisor (\code{n_obs + lambda_0}) applied to
-that kernel matrix to get the posterior covariance. The (internal)
-\code{get_sigmak()} helper reconstructs the actual (ID-aligned)
-posterior covariance matrix for a group.}
+use; \code{scale}, the divisor (\code{n_obs + lambda_0}) applied to
+that kernel matrix to get the posterior covariance; and
+\code{obs_noise} (this call's value, reused by \code{get_sigmak()}). The
+(internal) \code{get_sigmak()} helper reconstructs the actual
+(ID-aligned) posterior covariance matrix for a group.}
 }
 }
 \description{
