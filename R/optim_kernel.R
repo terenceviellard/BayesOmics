@@ -62,20 +62,43 @@ chol_inv_jitter <- function(mat, pen_diag, max_tries = 20, warn_ratio = 100) {
 
 #' @noRd
 #'
-#' @details Centers `output` on its own `group`-specific empirical mean --
-#'   used by `optim_hp()`'s `group_col` argument to pool replicates from
+#' @details Centers `output` on its own `(group, id)`-specific empirical mean
+#'   -- used by `optim_hp()`'s `group_col` argument to pool replicates from
 #'   multiple groups without an unmodeled between-group mean shift
-#'   contaminating the fitted kernel hyperparameters (see
-#'   `dev/optim_exploration/NOTES_math.md`, sec. "Confusion du decalage de
-#'   moyenne entre groupes"). `tapply()` returns a 1-d array; naive
-#'   arithmetic on its result (`output - grp_means[group]`) silently keeps a
-#'   stray `dim` attribute that breaks `dmnorm()`'s `is.vector(x)` check
-#'   downstream, producing a cryptic "missing value where TRUE/FALSE needed"
-#'   error with no hint of the real cause -- guarded here with
-#'   `unname(as.numeric(...))` and asserted via `stopifnot()`.
-demean_by_group <- function(output, group) {
-  grp_means <- tapply(output, group, mean)
-  demeaned  <- unname(as.numeric(output - grp_means[group]))
+#'   contaminating the fitted kernel hyperparameters. Demeaning by `group`
+#'   alone (this function's previous behavior) only exactly cancels a
+#'   between-group shift that is UNIFORM across every id (`mu_g = mu_0 +
+#'   Delta_g * 1_p`); for a real differential-expression pattern (only some
+#'   ids shifted, or shifted by different amounts), it leaves a residual that
+#'   leaks into the fitted kernel `variance` -- worse the less uniform the
+#'   pattern, confirmed empirically to roughly double the package's own OVL
+#'   metric on a realistic partial-shift pattern (severe understatement of
+#'   real differential signal, not just an internal HP bias). Demeaning by
+#'   the full `(group, id)` cell instead removes the group's entire mean
+#'   PROFILE (whatever its shape), not just its scalar average, closing this
+#'   gap. See `dev/optim_exploration/14_group_and_id_demean/README.md` and
+#'   `demeaning_likelihood.tex` for the full derivation, numeric validation
+#'   (HP recovery, end-to-end OVL, joint coverage) and known pathological
+#'   cases (very small `N` per cell; extreme `mu_random` prior spread).
+#'
+#'   `n_groups` in the returned list is still the number of distinct
+#'   GROUPS (not `groups x ids`): the REML correction's lost degrees of
+#'   freedom track the rank of the replicate/row space the mean was
+#'   projected out of, not the number of scalar mean parameters estimated --
+#'   estimating a full per-group mean VECTOR instead of a per-group scalar
+#'   does not change this (proved in `dev/optim_exploration/NOTES_math.md`
+#'   sec. 8-9 and `demeaning_likelihood.tex` sec. 6.4).
+#'
+#'   `tapply()` returns a 1-d array; naive arithmetic on its result (`output -
+#'   cell_means[key]`) silently keeps a stray `dim` attribute that breaks
+#'   `dmnorm()`'s `is.vector(x)` check downstream, producing a cryptic
+#'   "missing value where TRUE/FALSE needed" error with no hint of the real
+#'   cause -- guarded here with `unname(as.numeric(...))` and asserted via
+#'   `stopifnot()`.
+demean_by_group_and_id <- function(output, group, id) {
+  key <- interaction(group, id, drop = TRUE)
+  cell_means <- tapply(output, key, mean)
+  demeaned   <- unname(as.numeric(output - cell_means[key]))
   stopifnot(is.null(dim(demeaned)))
   list(output = demeaned, n_groups = length(unique(group)))
 }
@@ -663,20 +686,34 @@ gr_sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, 
 #' @param group_col Name of a column in `db` (e.g. `"Group"`) identifying
 #'   which experimental group each observation belongs to. When supplied,
 #'   pools replicates from every group into a single fit -- centering each
-#'   group on its own empirical mean first (`prior_mean` is then ignored,
-#'   forced to `0`) -- and adds the exact closed-form REML correction for
-#'   the degrees of freedom spent estimating those group means:
+#'   `(group, ID)` cell on its own empirical mean first (`prior_mean` is then
+#'   ignored, forced to `0`; requires an `ID` column) -- and adds the exact
+#'   closed-form REML correction for the degrees of freedom spent estimating
+#'   those group means:
 #'   \eqn{\text{NLL}_\text{REML}(\theta) = \text{NLL}_\text{demeaned}(\theta) -
-#'   (G/2)\log|\Sigma'_\theta|}, \eqn{G} = number of distinct groups. Without
-#'   this, pooling multiple groups under one shared `prior_mean` lets an
-#'   unmodeled between-group mean shift bias the fitted kernel variance
-#'   (severely, and roughly quadratically in the shift) -- see
-#'   `dev/optim_exploration/NOTES_math.md` and
-#'   `dev/optim_exploration/10_group_mean_shift_confound.R` for the full
-#'   derivation and empirical quantification. Requires a balanced Group x
-#'   Sample design (the same features observed for every group/sample
-#'   combination); errors otherwise. Defaults to `NULL` (no group handling,
-#'   behavior identical to before this parameter existed).
+#'   (G/2)\log|\Sigma'_\theta|}, \eqn{G} = number of distinct groups (NOT
+#'   groups x ids -- the correction tracks the rank of the replicate space
+#'   the mean was projected out of, unchanged whether a per-group mean is a
+#'   scalar or a full per-id vector). Without the demeaning step, pooling
+#'   multiple groups under one shared `prior_mean` lets an unmodeled
+#'   between-group mean shift bias the fitted kernel variance; demeaning by
+#'   the full `(group, ID)` cell (rather than by group alone) is required for
+#'   that correction to hold for a realistic, non-uniform differential
+#'   pattern (only some ids shifted) -- group-alone demeaning only exactly
+#'   cancels a shift that is the SAME on every id, and otherwise leaves a
+#'   residual that inflates the fitted variance and roughly doubles the
+#'   package's own OVL metric on a realistic partial-shift pattern (confirmed
+#'   empirically, not just a theoretical concern). See
+#'   `dev/optim_exploration/NOTES_math.md`,
+#'   `dev/optim_exploration/14_group_and_id_demean/README.md` and
+#'   `demeaning_likelihood.tex` for the full derivation and empirical
+#'   validation (HP recovery, end-to-end OVL, joint coverage). Requires a
+#'   balanced Group x Sample design (the same features observed for every
+#'   group/sample combination); errors otherwise. Known pathological regimes
+#'   (not yet guarded against, see the README above): very small `N` per
+#'   `(group, ID)` cell, and extreme `mu_random` prior spread when
+#'   `mu_random = TRUE` was used to simulate the data. Defaults to `NULL` (no
+#'   group handling, behavior identical to before this parameter existed).
 #'
 #' @return If `verbose` is `FALSE`, a named vector of optimized hyperparameters
 #'   in natural (constrained) space (via `keRnel::get_trainable_params()`),
@@ -720,14 +757,18 @@ optim_hp <- function(kern, db, prior_mean = NULL, prior_cov,
     if (!group_col %in% names(db)) {
       stop("'group_col' (\"", group_col, "\") is not a column of 'db'.")
     }
+    if (!"ID" %in% names(db)) {
+      stop("'db' must contain an 'ID' column when 'group_col' is supplied ",
+           "(each (", group_col, ", ID) cell is centered on its own empirical mean).")
+    }
     if (!is.null(prior_mean) && !isTRUE(all.equal(unname(prior_mean), 0))) {
       warning(
-        "'prior_mean' is ignored when 'group_col' is supplied: each group is ",
-        "centered on its own empirical mean first, forcing an effective ",
-        "prior_mean of 0."
+        "'prior_mean' is ignored when 'group_col' is supplied: each ",
+        "(group, ID) cell is centered on its own empirical mean first, ",
+        "forcing an effective prior_mean of 0."
       )
     }
-    demeaned   <- demean_by_group(db$Output, db[[group_col]])
+    demeaned   <- demean_by_group_and_id(db$Output, db[[group_col]], db$ID)
     db$Output  <- demeaned$output
     n_groups   <- demeaned$n_groups
     prior_mean <- 0

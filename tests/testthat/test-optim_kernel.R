@@ -762,12 +762,23 @@ test_that("optim_hp fits two sibling sub-kernels sharing a bare hyperparameter n
 
 # -- Group pooling / REML correction (group_col, "Solution S2") ----------------
 
-test_that("demean_by_group centers each group on its own mean, for any G", {
-  output <- c(1, 2, 3, 10, 12, 14, 100, 106)
-  group  <- c("a", "a", "a", "b", "b", "b", "c", "c")
-  res <- BayesOmics:::demean_by_group(output, group)
-  expect_equal(res$n_groups, 3)
-  expect_equal(as.numeric(tapply(res$output, group, mean)), c(0, 0, 0), tolerance = 1e-10)
+test_that("demean_by_group_and_id centers each (group, id) cell on its own mean, n_groups counts groups not cells", {
+  # 2 ids x 2 groups x 2 replicates: cell means must each land exactly on 0,
+  # but n_groups must stay 2 (number of distinct GROUPS), not 4 (number of
+  # (group, id) cells) -- the REML correction's degrees-of-freedom loss
+  # tracks the rank of the replicate space, not the count of scalar means
+  # estimated (dev/optim_exploration/NOTES_math.md sec. 8-9).
+  output <- c(1, 3,   10, 12,   5, 7,   20, 24)
+  group  <- c("a", "a", "a", "a", "b", "b", "b", "b")
+  id     <- c("x", "x", "y", "y", "x", "x", "y", "y")
+  res <- BayesOmics:::demean_by_group_and_id(output, group, id)
+  expect_equal(res$n_groups, 2)
+  cell <- interaction(group, id, drop = TRUE)
+  expect_equal(as.numeric(tapply(res$output, cell, mean)), rep(0, 4), tolerance = 1e-10)
+  # Group-alone means are NOT necessarily zero -- only the finer (group, id)
+  # cells are, confirming this demeans by the full mean PROFILE, not just
+  # each group's scalar average (the bug this replaces: see dev/optim_exploration/
+  # 14_group_and_id_demean/README.md for the empirical contamination this fixes).
   # No dim attribute leaks through (the tapply-array footgun documented in
   # dev/optim_exploration/NOTES_math.md and 10_group_mean_shift_confound.R).
   expect_null(dim(res$output))
@@ -786,6 +797,16 @@ test_that("optim_hp errors when group_col is not a column of db", {
   expect_error(
     optim_hp(kern, data, prior_cov = 1, group_col = "NotAColumn"),
     "not a column"
+  )
+})
+
+test_that("optim_hp errors when group_col is supplied but db has no ID column", {
+  data <- make_data(nb_id = 5, nb_group = 2, nb_sample = 3)
+  data$ID <- NULL
+  kern <- make_kernel()
+  expect_error(
+    optim_hp(kern, data, prior_cov = 1, group_col = "Group"),
+    "'ID' column"
   )
 })
 
@@ -814,8 +835,8 @@ test_that("optim_hp(group_col=...) internally demeans and applies n_groups (matc
   res_grouped <- optim_hp(kern, data, prior_cov = 1, group_col = "Group", verbose = TRUE)
 
   # Re-evaluate the NLL that optim_hp() must have minimized, by reproducing
-  # its two documented steps by hand: demean_by_group() then n_groups = G.
-  demeaned    <- BayesOmics:::demean_by_group(data$Output, data$Group)
+  # its two documented steps by hand: demean_by_group_and_id() then n_groups = G.
+  demeaned    <- BayesOmics:::demean_by_group_and_id(data$Output, data$Group, data$ID)
   data_manual <- data
   data_manual$Output <- demeaned$output
   free_at_opt <- keRnel::get_free_params(res_grouped$kern)
@@ -851,7 +872,7 @@ test_that("gr_sum_logGaussian REML correction: analytic gradient matches numeric
   kern_true <- keRnel::variance_kernel(variance = 2) * keRnel::se_kernel(length_scale = 2)
   data_mg   <- simu_db_kernel(nb_id = 6, nb_group = 4, nb_sample = 3, diff_group = 5,
                                var_sample = 1, kernel = kern_true)
-  demeaned  <- BayesOmics:::demean_by_group(data_mg$Output, data_mg$Group)
+  demeaned  <- BayesOmics:::demean_by_group_and_id(data_mg$Output, data_mg$Group, data_mg$ID)
   data_mg$Output <- demeaned$output
 
   kern <- make_kernel(hp = c(1.5, 2.0))
@@ -886,4 +907,34 @@ test_that("optim_hp(group_col=...) recovers kernel variance closer to truth than
   hp_grouped <- optim_hp(kern_fit, data, prior_cov = 1e-6, group_col = "Group")
 
   expect_true(abs(unname(hp_grouped["variance"]) - 3) < abs(unname(hp_naive["variance"]) - 3))
+})
+
+test_that("optim_hp(group_col=...) is not contaminated by a NON-uniform between-group shift pattern", {
+  # Regression test for the bug demean_by_group_and_id() fixes: a uniform
+  # shift (diff_group = scalar, every id shifted identically -- the case
+  # covered by the test above) was already handled correctly by the OLD
+  # scalar-per-group demeaning. A partial/non-uniform shift (only some ids
+  # differ between groups) was NOT: the old demeaning left a residual that
+  # inflated the fitted `variance`, more severely as the shift pattern
+  # departed further from uniform (confirmed empirically in
+  # dev/optim_exploration/14_group_and_id_demean/, up to ~doubling the
+  # package's own OVL metric downstream). Here group 2 gets a shift on only
+  # half of the ids -- `variance` fitted with group_col= should stay close
+  # to the truth despite this, just as it does for a uniform shift.
+  skip_on_cran()
+  set.seed(75)
+  kern_true <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 3)
+  data <- simu_db_kernel(kernel = kern_true, nb_id = 10, nb_group = 2, nb_sample = 6,
+                          diff_group = 0, var_sample = 1, mu_0 = 0,
+                          range_input = c(0, 9), integer_input = TRUE, input_grid = TRUE)
+  ids <- sort(unique(data$ID))
+  shift <- stats::setNames(numeric(length(ids)), ids)
+  shift[ids[1:5]] <- 4
+  rows <- data$Group == "2"
+  data$Output[rows] <- data$Output[rows] + shift[data$ID[rows]]
+
+  kern_fit   <- make_kernel()
+  hp_grouped <- optim_hp(kern_fit, data, prior_cov = 1, group_col = "Group")
+
+  expect_true(abs(unname(hp_grouped["variance"]) - 1) < 1)
 })
