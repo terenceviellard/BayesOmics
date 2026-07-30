@@ -74,20 +74,34 @@ identical to before this parameter existed.}
 \item{group_col}{Name of a column in \code{db} (e.g. \code{"Group"}) identifying
 which experimental group each observation belongs to. When supplied,
 pools replicates from every group into a single fit -- centering each
-group on its own empirical mean first (\code{prior_mean} is then ignored,
-forced to \code{0}) -- and adds the exact closed-form REML correction for
-the degrees of freedom spent estimating those group means:
+\verb{(group, ID)} cell on its own empirical mean first (\code{prior_mean} is then
+ignored, forced to \code{0}; requires an \code{ID} column) -- and adds the exact
+closed-form REML correction for the degrees of freedom spent estimating
+those group means:
 \eqn{\text{NLL}_\text{REML}(\theta) = \text{NLL}_\text{demeaned}(\theta) -
-(G/2)\log|\Sigma'_\theta|}, \eqn{G} = number of distinct groups. Without
-this, pooling multiple groups under one shared \code{prior_mean} lets an
-unmodeled between-group mean shift bias the fitted kernel variance
-(severely, and roughly quadratically in the shift) -- see
-\code{dev/optim_exploration/NOTES_math.md} and
-\verb{dev/optim_exploration/10_group_mean_shift_confound.R} for the full
-derivation and empirical quantification. Requires a balanced Group x
-Sample design (the same features observed for every group/sample
-combination); errors otherwise. Defaults to \code{NULL} (no group handling,
-behavior identical to before this parameter existed).}
+(G/2)\log|\Sigma'_\theta|}, \eqn{G} = number of distinct groups (NOT
+groups x ids -- the correction tracks the rank of the replicate space
+the mean was projected out of, unchanged whether a per-group mean is a
+scalar or a full per-id vector). Without the demeaning step, pooling
+multiple groups under one shared \code{prior_mean} lets an unmodeled
+between-group mean shift bias the fitted kernel variance; demeaning by
+the full \verb{(group, ID)} cell (rather than by group alone) is required for
+that correction to hold for a realistic, non-uniform differential
+pattern (only some ids shifted) -- group-alone demeaning only exactly
+cancels a shift that is the SAME on every id, and otherwise leaves a
+residual that inflates the fitted variance and roughly doubles the
+package's own OVL metric on a realistic partial-shift pattern (confirmed
+empirically, not just a theoretical concern). See
+\code{dev/optim_exploration/NOTES_math.md},
+\verb{dev/optim_exploration/14_group_and_id_demean/README.md} and
+\code{demeaning_likelihood.tex} for the full derivation and empirical
+validation (HP recovery, end-to-end OVL, joint coverage). Requires a
+balanced Group x Sample design (the same features observed for every
+group/sample combination); errors otherwise. Known pathological regimes
+(not yet guarded against, see the README above): very small \code{N} per
+\verb{(group, ID)} cell, and extreme \code{mu_random} prior spread when
+\code{mu_random = TRUE} was used to simulate the data. Defaults to \code{NULL} (no
+group handling, behavior identical to before this parameter existed).}
 }
 \value{
 If \code{verbose} is \code{FALSE}, a named vector of optimized hyperparameters
