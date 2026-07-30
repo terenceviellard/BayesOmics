@@ -153,6 +153,36 @@ multi_posterior_mean <- function(data, kern, mu_0 = 1, lambda_0 = 1, obs_noise =
   # per-observation sum/count. D = 1 (legacy scalar Input, or already-1-row
   # Input_ID) makes this division a no-op, so the D = 1 case is numerically
   # identical to before this generalization.
+  #
+  # This n_dim division cannot, by itself, distinguish clean data from every
+  # row being uniformly duplicated (e.g. 2x): n_distinct(Input_ID) and n()
+  # both double, so their ratio (and the later "is lengths near-integer?"
+  # check below) is unchanged either way -- a duplicated dataset silently
+  # returns a wrong muk with no error (found by dev/multi_agent_audit,
+  # reproduced: muk = 12 instead of 10 under a uniform 2x row duplication).
+  # When a 'Sample' column identifies individual replicates, guard against
+  # this directly: within a single (Group, ID, Sample) replicate, each
+  # Input_ID must appear exactly once (n_distinct(Input_ID) == n()) -- a
+  # uniform duplication violates this even though the (Group, ID)-level
+  # ratio stays a clean integer. No 'Sample' column means there is no way to
+  # identify which rows form one replicate, so this check is skipped (same
+  # convention as sum_logGaussian()'s is_replicated detection elsewhere).
+  if ("Sample" %in% names(data)) {
+    replicate_check <- data %>%
+      dplyr::group_by(.data$Group, .data$ID, .data$Sample) %>%
+      dplyr::summarise(
+        n_rows            = dplyr::n(),
+        n_distinct_input  = dplyr::n_distinct(.data$Input_ID),
+        .groups = "drop"
+      )
+    if (any(replicate_check$n_rows != replicate_check$n_distinct_input)) {
+      stop(paste0(
+        "Duplicated (or missing) Input_ID row(s) within at least one ",
+        "(Group, ID, Sample) replicate: each replicate must have exactly ",
+        "one row per Input_ID dimension, with no repeats."
+      ))
+    }
+  }
   df_mu <- data %>%
     dplyr::group_by(.data$Group, .data$ID) %>%
     dplyr::summarise(

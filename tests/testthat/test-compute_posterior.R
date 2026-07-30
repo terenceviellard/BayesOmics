@@ -69,6 +69,58 @@ test_that("multi_posterior_mean errors when an ID maps to several distinct Input
   expect_error(multi_posterior_mean(data, kern), "distinct Input position")
 })
 
+# -- multi_posterior_mean: duplicated Input_ID rows within a replicate
+# (regression for the silently-wrong muk bug found by dev/multi_agent_audit)
+
+test_that("multi_posterior_mean errors when Input_ID rows are duplicated within a (Group, ID, Sample) replicate", {
+  # Every row of Sample 1 duplicated 2x: n_distinct(Input_ID) and n() both
+  # double at the (Group, ID) level, so the OLD "is lengths an integer?"
+  # check couldn't tell this apart from clean data (2 replicates, 1 row
+  # each, vs. 1 replicate duplicated into 2 rows) -- it silently returned
+  # muk = 12 instead of the correct 10 for the case below.
+  data <- data.frame(
+    ID     = c("ID_1", "ID_1", "ID_1"),
+    Group  = "A",
+    Sample = c(1, 2, 2),
+    Output = c(10, 14, 14),
+    Input  = c(5, 5, 5)
+  )
+  kern <- make_kernel()
+  expect_error(
+    multi_posterior_mean(data, kern),
+    "Duplicated.*Input_ID|Input_ID.*[Dd]uplicat"
+  )
+})
+
+test_that("multi_posterior_mean does not false-positive on genuinely balanced replicates", {
+  data <- data.frame(
+    ID     = rep(c("ID_1", "ID_2"), each = 3),
+    Group  = "A",
+    Sample = rep(1:3, times = 2),
+    Output = c(10, 11, 9, 20, 21, 19),
+    Input  = rep(c(5, 6), each = 3)
+  )
+  kern <- make_kernel()
+  expect_no_error(multi_posterior_mean(data, kern))
+})
+
+test_that("multi_posterior_mean: muk is correct (not inflated) on clean replicated data", {
+  # Direct numeric check the duplication bug's fix direction targets:
+  # lambda_0 = 1, mu_0 = 0, 2 genuine replicates (Output = 10, 14) -> muk =
+  # (0 + 10 + 14) / (2 + 1) = 8, not 12 (what the old code silently returned
+  # under a 2x row duplication of this exact same data).
+  data <- data.frame(
+    ID     = c("ID_1", "ID_1"),
+    Group  = "A",
+    Sample = c(1, 2),
+    Output = c(10, 14),
+    Input  = c(5, 5)
+  )
+  kern <- make_kernel()
+  res <- multi_posterior_mean(data, kern, mu_0 = 0, lambda_0 = 1)
+  expect_equal(unname(res$groups[["A"]]$muk["ID_1"]), 8, tolerance = 1e-10)
+})
+
 # -- multi_posterior_mean: muk/sigmak alignment (regression for the former
 # alphabetical-ID vs Input-value-order misalignment bug) ---------------------
 
