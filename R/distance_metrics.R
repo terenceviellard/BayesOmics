@@ -42,8 +42,10 @@
 #'     no valid formula unless the two groups share the same \code{kernel_key}
 #'     (only \code{\link{ovl_metric}}). Defaults to \code{FALSE}.}
 #'   \item{\code{is_symmetric_metric(metric)}}{\code{TRUE} if swapping the two
-#'     groups never changes the value (only \code{\link{kl_metric}} is not).
-#'     Defaults to \code{TRUE}.}
+#'     groups never changes the value (\code{\link{kl_metric}} and
+#'     \code{\link{mahalanobis_metric}} are not -- the latter is evaluated
+#'     under \eqn{\Sigma_1^{-1}} specifically, so it differs from its swapped
+#'     counterpart whenever \eqn{\Sigma_1 \neq \Sigma_2}). Defaults to \code{TRUE}.}
 #' }
 #'
 #' @param metric A \code{distance_metric} object.
@@ -86,12 +88,20 @@ is_symmetric_metric.distance_metric <- function(metric) TRUE
 #' @description The Mahalanobis distance between two groups' posterior means
 #'   under \eqn{\Sigma_1}: \eqn{D = \sqrt{(\mu_1-\mu_2)^\top\Sigma_1^{-1}(\mu_1-\mu_2)}}.
 #'   This is the same quantity \code{\link{calculate_group_overlaps}} computes
-#'   internally before converting it to an overlap coefficient.
+#'   internally before converting it to an overlap coefficient. Asymmetric
+#'   whenever \eqn{\Sigma_1 \neq \Sigma_2} -- swapping the two groups uses
+#'   \eqn{\Sigma_2^{-1}} instead, generally a different value -- so
+#'   \code{\link{compute_group_diff}} computes both directions separately
+#'   rather than mirroring one across the diagonal (see
+#'   \code{is_symmetric_metric.mahalanobis_metric} below).
 #' @return A \code{distance_metric} object.
 #' @export
 mahalanobis_metric <- function() {
   structure(list(), class = c("mahalanobis_metric", "distance_metric"))
 }
+
+#' @export
+is_symmetric_metric.mahalanobis_metric <- function(metric) FALSE
 
 #' @export
 evaluate_metric.mahalanobis_metric <- function(metric, mu1, mu2, Sigma1, Sigma2, scale1 = NULL, scale2 = NULL, same_kernel = FALSE, ...) {
