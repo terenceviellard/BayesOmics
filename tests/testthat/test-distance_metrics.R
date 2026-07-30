@@ -73,13 +73,35 @@ test_that("mahalanobis_metric matches hand-computed 1D value", {
   expect_equal(mat["g1", "g2"], 2, tolerance = 1e-5)
 })
 
-test_that("mahalanobis_metric is symmetric", {
+test_that("mahalanobis_metric happens to be symmetric when Sigma1 == Sigma2", {
+  # Coincidence of this specific case (both groups share the same
+  # covariance), not a general property -- see the next test for the
+  # general (asymmetric) case.
   res <- make_custom_results(list(
     g1 = list(muk = c(ID_1 = 1, ID_2 = -2), sigma = diag(c(2, 3))),
     g2 = list(muk = c(ID_1 = -1, ID_2 = 1), sigma = diag(c(2, 3)))
   ))
   mat <- compute_group_diff(res, mahalanobis_metric())
   expect_equal(mat["g1", "g2"], mat["g2", "g1"])
+})
+
+test_that("mahalanobis_metric is NOT symmetric when Sigma1 != Sigma2, and is_symmetric_metric() reflects that", {
+  # Regression test for the bug found by dev/multi_agent_audit: the metric
+  # is evaluated under Sigma1^-1 specifically (D = sqrt(delta' Sigma1^-1
+  # delta)), so swapping the two groups uses Sigma2^-1 instead and
+  # generally gives a different value. Without
+  # is_symmetric_metric.mahalanobis_metric() -> FALSE, compute_group_diff()
+  # used to silently mirror the [g1,g2] value into [g2,g1] instead of
+  # computing the true, distinct [g2,g1] value.
+  expect_false(is_symmetric_metric(mahalanobis_metric()))
+  res <- make_custom_results(list(
+    g1 = list(muk = c(ID_1 = 0), sigma = matrix(1, 1, 1)),
+    g2 = list(muk = c(ID_1 = 2), sigma = matrix(4, 1, 1))
+  ))
+  mat <- compute_group_diff(res, mahalanobis_metric())
+  # D_12 = sqrt((0-2)^2 / 1) = 2 (under Sigma1 = 1); D_21 = sqrt((2-0)^2 / 4) = 1 (under Sigma2 = 4).
+  expect_equal(mat["g1", "g2"], 2, tolerance = 1e-5)
+  expect_equal(mat["g2", "g1"], 1, tolerance = 1e-5)
 })
 
 # -- kl_metric: hand-verified, asymmetric ---------------------------------------
@@ -187,7 +209,7 @@ test_that("per_feature_metric forwards requires_shared_kernel/is_symmetric_metri
   expect_true(requires_shared_kernel(per_feature_metric(ovl_metric(), power = 1)))
   expect_false(requires_shared_kernel(per_feature_metric(mahalanobis_metric(), power = 1)))
   expect_false(is_symmetric_metric(per_feature_metric(kl_metric(), power = 1)))
-  expect_true(is_symmetric_metric(per_feature_metric(mahalanobis_metric(), power = 1)))
+  expect_false(is_symmetric_metric(per_feature_metric(mahalanobis_metric(), power = 1)))
 })
 
 test_that("per_feature_metric() rejects a base that isn't a distance_metric", {

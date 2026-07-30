@@ -60,7 +60,9 @@ and \code{same_kernel} whether the two groups share the same \code{kernel_key}.}
 no valid formula unless the two groups share the same \code{kernel_key}
 (only \code{\link{ovl_metric}}). Defaults to \code{FALSE}.}
 \item{\code{is_symmetric_metric(metric)}}{\code{TRUE} if swapping the two
-groups never changes the value (only \code{\link{kl_metric}} is not).
-Defaults to \code{TRUE}.}
+groups never changes the value (\code{\link{kl_metric}} and
+\code{\link{mahalanobis_metric}} are not -- the latter is evaluated
+under \eqn{\Sigma_1^{-1}} specifically, so it differs from its swapped
+counterpart whenever \eqn{\Sigma_1 \neq \Sigma_2}). Defaults to \code{TRUE}.}
 }
 }
