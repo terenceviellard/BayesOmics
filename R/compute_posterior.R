@@ -283,8 +283,17 @@ multi_posterior_mean <- function(data, kern, mu_0 = 1, lambda_0 = 1, obs_noise =
     unique_keys <- row_keys[ord[keep]]
     # A canonical, deterministic cache key built from the exact same strings
     # used for the matrix's own dimnames just below -- unlike the previous
-    # toString(sort(vec)) key, the two can never disagree.
-    vec_hash <- paste(unique_keys, collapse = ";;")
+    # toString(sort(vec)) key, the two can never disagree. Hashed (not used
+    # raw) because assign()/exists() use this as an R *symbol* name, which
+    # has a hard 10,000-byte limit enforced by R itself -- the raw
+    # collapsed-keys string blows past that well before nb_id reaches a few
+    # thousand (found running E14_scale_server.R at nb_id=2000: "variable
+    # names are limited to 10000 bytes"). rlang::hash() (already a
+    # dependency) gives a fixed-length 32-char digest regardless of input
+    # size, deterministic within a session -- exactly what this
+    # single-call-local cache needs (no cross-session persistence implied
+    # or required, see this function's own cache-scope documentation).
+    vec_hash <- rlang::hash(paste(unique_keys, collapse = ";;"))
 
     if (!exists(vec_hash, envir = cache, inherits = FALSE)) {
       kern_mat <- keRnel::evaluate(kern, unique_rows, unique_rows)
