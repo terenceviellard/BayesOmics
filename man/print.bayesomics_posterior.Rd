@@ -7,7 +7,7 @@
 \method{print}{bayesomics_posterior}(x, digits = 3, ...)
 }
 \arguments{
-\item{x}{A list returned by \code{\link{multi_posterior_mean}}.}
+\item{x}{A list returned by \code{\link{posterior_mean}}.}
 
 \item{digits}{Number of significant digits used when rounding the
 displayed mean vector and covariance matrix. Defaults to \code{3}.}
@@ -18,7 +18,7 @@ displayed mean vector and covariance matrix. Defaults to \code{3}.}
 \code{x}, invisibly.
 }
 \description{
-Pretty-prints the result of \code{\link{multi_posterior_mean}}: for each
+Pretty-prints the result of \code{\link{posterior_mean}}: for each
 group, the posterior mean vector (\code{muk}) and the reconstructed
 (ID-aligned) posterior covariance matrix, obtained via the internal
 \code{get_sigmak()} helper.

@@ -297,7 +297,7 @@ build_faceted_pairs_distrib <- function(sample_distrib, pairs, id, prob_CI, show
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5)
 #' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-#' posterior <- multi_posterior_mean(data, kern)
+#' posterior <- posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 500)
 #' plot_posterior_mean(samples)
 plot_posterior_mean <- function(sample_distrib){
@@ -360,7 +360,7 @@ build_posterior_mean_plot <- function(mean_db) {
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 4, nb_sample = 5, diff_group = 4)
 #' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-#' posterior <- multi_posterior_mean(data, kern)
+#' posterior <- posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 500)
 #' plot_group_overlap_heatmap(samples, id = unique(samples$ID)[1])
 plot_group_overlap_heatmap <- function(sample_distrib, id = NULL, digits = 2){
@@ -424,7 +424,7 @@ plot_group_overlap_heatmap <- function(sample_distrib, id = NULL, digits = 2){
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 4, nb_sample = 5, diff_group = 4)
 #' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-#' posterior <- multi_posterior_mean(data, kern)
+#' posterior <- posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 500)
 #' plots <- plot_distrib_each_pair(samples, id = unique(samples$ID)[1])
 #' names(plots)
@@ -568,7 +568,7 @@ build_overlap_distrib <- function(sample_distrib, group1, group2, id) {
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5)
 #' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-#' posterior <- multi_posterior_mean(data, kern)
+#' posterior <- posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 500)
 #' plot_posterior_overlap(samples, group1 = "1", group2 = "2", id = unique(samples$ID)[1])
 plot_posterior_overlap <- function(sample_distrib, group1 = NULL, group2 = NULL, id = NULL) {
@@ -714,7 +714,7 @@ plot_distrib_multi_group <- function(
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5)
 #' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-#' posterior <- multi_posterior_mean(data, kern)
+#' posterior <- posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 500)
 #' plot_distrib(samples, group1 = "1", group2 = "2", id = unique(samples$ID)[1])
 plot_distrib = function(
@@ -840,7 +840,7 @@ build_multi_diff_panel <- function(db_plot, group1, group2, cumulative, overlap_
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 3, nb_sample = 5, diff_group = 5)
 #' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-#' posterior <- multi_posterior_mean(data, kern)
+#' posterior <- posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 500)
 #' multi_diff <- compute_multi_diff(samples, results = posterior)
 #' plot_multi_diff(multi_diff)

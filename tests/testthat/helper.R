@@ -23,7 +23,7 @@ make_data <- function(nb_id = 5, nb_group = 2, nb_sample = 1, seed = 42) {
 
 make_posteriors <- function(nb_id = 5, nb_group = 2, seed = 42) {
   data <- make_data(nb_id = nb_id, nb_group = nb_group, seed = seed)
-  multi_posterior_mean(data, make_kernel())
+  posterior_mean(data, make_kernel())
 }
 
 # -- sample_distrib (for plot_distrib) ----------------------------------------
@@ -46,7 +46,7 @@ make_sample_distrib <- function(groups = c("G1", "G2"),
   }))
 }
 
-# -- Hand-crafted posterior list (multi_posterior_mean() output format) -------
+# -- Hand-crafted posterior list (posterior_mean() output format) -------
 # Format: list(kernels = <named list of matrices keyed by Input value strings>,
 #              groups  = <named list per group with muk, id_to_input, kernel_key, scale>)
 
@@ -101,7 +101,7 @@ make_aligned_sample_distrib <- function(groups_mats) {
 
 make_multi_diff <- function(nb_id = 5, nb_group = 3, n = 300, seed = 42) {
   data      <- make_data(nb_id = nb_id, nb_group = nb_group, nb_sample = 5, seed = seed)
-  posterior <- multi_posterior_mean(data, make_kernel())
+  posterior <- posterior_mean(data, make_kernel())
   samples   <- sample_posterior(posterior, n = n)
   compute_multi_diff(samples, results = posterior)
 }
@@ -114,7 +114,7 @@ make_multi_diff <- function(nb_id = 5, nb_group = 3, n = 300, seed = 42) {
 #           (defaults to 1, i.e. sigma IS the posterior covariance).
 # )
 # Groups whose `sigma` matrices are numerically equal are assigned the SAME
-# kernel_key (mirroring multi_posterior_mean()'s deduplication-by-Input-set),
+# kernel_key (mirroring posterior_mean()'s deduplication-by-Input-set),
 # so that scale-only differences between groups exercise the c != 1 branch of
 # calculate_group_overlaps() while still sharing one raw kernel matrix. Groups
 # with genuinely different `sigma` values get distinct keys, which is what

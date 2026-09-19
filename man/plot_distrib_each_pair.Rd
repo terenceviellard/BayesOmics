@@ -45,7 +45,7 @@ more than two groups.
 \examples{
 data <- simu_db(nb_id = 8, nb_group = 4, nb_sample = 5, diff_group = 4)
 kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-posterior <- multi_posterior_mean(data, kern)
+posterior <- posterior_mean(data, kern)
 samples <- sample_posterior(posterior, n = 500)
 plots <- plot_distrib_each_pair(samples, id = unique(samples$ID)[1])
 names(plots)

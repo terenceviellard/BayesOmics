@@ -237,7 +237,7 @@ test_that("marginal_metric(ovl_metric()) resists the joint-overlap collapse rela
   set.seed(42)
   data <- simu_db(nb_id = 10, nb_group = 2, nb_sample = 5, diff_group = 3)
   kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-  posterior <- multi_posterior_mean(data, kern)
+  posterior <- posterior_mean(data, kern)
 
   joint_ovl    <- calculate_group_overlaps(posterior)["1", "2"]
   marginal_ovl <- compute_group_diff(posterior, marginal_metric(ovl_metric()))["1", "2"]

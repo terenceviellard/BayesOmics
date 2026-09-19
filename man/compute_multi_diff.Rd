@@ -12,7 +12,7 @@ compute_multi_diff(sample_distrib, results = NULL)
 \code{ID}, \code{Group} and \code{Sample}.}
 
 \item{results}{An optional list, typically from
-\code{\link{multi_posterior_mean}}, with elements \code{kernels} and
+\code{\link{posterior_mean}}, with elements \code{kernels} and
 \code{groups}. If supplied, \code{\link{calculate_group_overlaps}} is
 used to attach an exact \code{Overlap_coef} to the result. If \code{NULL}
 (default), \code{Overlap_coef} is omitted.}
@@ -50,7 +50,7 @@ verified from a melted data frame with no explicit draw index).
 \examples{
 data <- simu_db(nb_id = 8, nb_group = 3, nb_sample = 5, diff_group = 5)
 kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-posterior <- multi_posterior_mean(data, kern)
+posterior <- posterior_mean(data, kern)
 samples <- sample_posterior(posterior, n = 500)
 multi_diff <- compute_multi_diff(samples, results = posterior)
 multi_diff$Diff_proba

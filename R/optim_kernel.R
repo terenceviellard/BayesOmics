@@ -105,6 +105,92 @@ demean_by_group_and_id <- function(output, group, id) {
 
 #' @noRd
 #'
+#' @details `df <= 0` means the variance is structurally undefined (as many or
+#'   more cells being averaged over as residual observations -- see
+#'   `resolve_closed_form_kernel()`'s callers) and always errors; `0 < df <
+#'   df_warn` means the fit runs but is noisy (see
+#'   `dev/optim_exploration/14_group_and_id_demean/README.md`, point 3: the
+#'   coefficient of variation of the fitted variance empirically drops below
+#'   0.5 around 8 residual degrees of freedom) and only warns.
+check_closed_form_df <- function(df, df_warn, label, pooled) {
+  pooling_hint <- if (pooled) "" else ", or pooled = TRUE to share degrees of freedom across groups"
+  if (df <= 0) {
+    stop(
+      "posterior_mean(): not enough residual degrees of freedom to estimate a ",
+      "closed-form variance for ", label, " (df = ", df, "); need at least one ",
+      "replicate beyond the number of (Group, ID) cells being averaged over ",
+      "(more samples", pooling_hint, ")."
+    )
+  }
+  if (df < df_warn) {
+    warning(
+      "posterior_mean(): only ", df, " residual degree(s) of freedom for ", label,
+      " (below df_warn = ", df_warn, "); the closed-form variance estimate will be ",
+      "noisy -- consider more replicates", pooling_hint, "."
+    )
+  }
+}
+
+#' @noRd
+#'
+#' @details Closed-form MLE/REML noise variance for `posterior_mean()`'s
+#'   `kern = NULL` path (derivation in `dev/univariate/NOTES_univariate.md`):
+#'   the minimizer of the exact same restricted likelihood
+#'   `optim_hp(group_col = "Group")` fits numerically via L-BFGS-B, computed
+#'   directly instead (validated to agree with the numeric fit to ~1e-6
+#'   relative error across 405 configurations in
+#'   `dev/univariate/01_closed_form_check.R`). `pooled = TRUE` returns a
+#'   single `keRnel::white_noise_kernel()` shared by every group (SSR pooled
+#'   across every `(Group, ID)` cell, `df = N_tot - n_cells`); `pooled =
+#'   FALSE` returns a named list, one kernel per group (SSR pooled only within
+#'   that group's own IDs, `df = N_g - n_ids_in_g`), which `posterior_mean()`
+#'   then evaluates separately per group instead of sharing one cached matrix
+#'   across groups (see its `groups_list` loop in `R/compute_posterior.R`).
+#'   `white_noise_kernel()` (diagonal: `noise` on the diagonal, `0`
+#'   off-diagonal) rather than `variance_kernel()` (constant, `noise`
+#'   EVERYWHERE including off-diagonal -- i.e. every feature perfectly
+#'   correlated, wrong here) is required for correctness whenever a group has
+#'   more than one ID: with a single ID (the univariate case) the two are
+#'   numerically identical, but they diverge as soon as `nb_id > 1`.
+#'
+#'   `data` must already be the validated/normalized data.frame
+#'   `posterior_mean()` builds internally (character `Group`, non-missing
+#'   `ID`), with `Input_ID` present via `normalize_input_cols()`.
+resolve_closed_form_kernel <- function(data, pooled, df_warn) {
+  obs <- if ("Sample" %in% names(data)) {
+    dplyr::distinct(data, .data$Group, .data$ID, .data$Sample, .data$Output)
+  } else if (length(unique(data$Input_ID)) > 1) {
+    stop(
+      "posterior_mean(): closed-form variance estimation (kern = NULL) requires ",
+      "a 'Sample' column when Input has more than one dimension (Input_ID), to ",
+      "identify individual replicate observations."
+    )
+  } else {
+    unique(data[, c("Group", "ID", "Output")])
+  }
+
+  demeaned <- demean_by_group_and_id(obs$Output, obs$Group, obs$ID)
+  resid    <- demeaned$output
+
+  if (pooled) {
+    n_cells <- length(unique(interaction(obs$Group, obs$ID, drop = TRUE)))
+    df      <- length(resid) - n_cells
+    check_closed_form_df(df, df_warn, label = "the pooled fit across all groups", pooled = TRUE)
+    return(keRnel::white_noise_kernel(noise = sum(resid^2) / df))
+  }
+
+  kern_by_group <- lapply(split(seq_along(resid), obs$Group), function(idx) {
+    g       <- obs$Group[idx[1]]
+    n_ids_g <- length(unique(obs$ID[idx]))
+    df_g    <- length(idx) - n_ids_g
+    check_closed_form_df(df_g, df_warn, label = paste0("group '", g, "'"), pooled = FALSE)
+    keRnel::white_noise_kernel(noise = sum(resid[idx]^2) / df_g)
+  })
+  kern_by_group
+}
+
+#' @noRd
+#'
 #' @details Appends one row to `trace_log$rows` (a plain list, grown by
 #'   index) recording a single objective/gradient evaluation. No-ops when
 #'   `trace_log` is `NULL`, so callers can pass it unconditionally without

@@ -117,7 +117,7 @@ scenario_label <- function(s) sprintf("Control=%d, Treatment=%d", s["Control"], 
 
 scenario_results <- lapply(scenarios, function(s) {
   data      <- build_dataset(s["Control"], s["Treatment"])
-  posterior <- multi_posterior_mean(data, ker_opt, mu_0 = prior_mean_est, lambda_0 = 1)
+  posterior <- posterior_mean(data, ker_opt, mu_0 = prior_mean_est, lambda_0 = 1)
   samples   <- sample_posterior(posterior, n = 2000)
   list(label = scenario_label(s), nb_control = s["Control"], nb_treatment = s["Treatment"],
        posterior = posterior, samples = samples)
@@ -125,7 +125,7 @@ scenario_results <- lapply(scenarios, function(s) {
 ```
 
 Every scenario above -- including the two strongly unbalanced ones -- runs through
-`multi_posterior_mean()` and `sample_posterior()` without any special-casing.
+`posterior_mean()` and `sample_posterior()` without any special-casing.
 
 ## Each group's posterior reflects only its own sample size
 
@@ -224,7 +224,7 @@ perfectly valid to compute.
 
 ## Takeaways
 
-The only hard requirement to compare two groups with `calculate_group_overlaps()` is that they share the same `Input` values (same `kernel_key`); their replicate counts (`nb_sample`) can differ freely. Each group's posterior precision depends only on its *own* sample size (`scale = nb_sample + lambda_0` in `multi_posterior_mean()`'s output)  -  adding replicates to one group never changes the other group's uncertainty. When the two groups' scales differ, `calculate_group_overlaps()` automatically uses the exact closed-form overlap for unequal-scale Gaussians (see `?calculate_group_overlaps`)  -  this is what made every unbalanced scenario above work without any special handling. In practice, you do not need to discard "extra" replicates from a richer group, or wait until both groups are equally sampled, to run a valid differential analysis.
+The only hard requirement to compare two groups with `calculate_group_overlaps()` is that they share the same `Input` values (same `kernel_key`); their replicate counts (`nb_sample`) can differ freely. Each group's posterior precision depends only on its *own* sample size (`scale = nb_sample + lambda_0` in `posterior_mean()`'s output)  -  adding replicates to one group never changes the other group's uncertainty. When the two groups' scales differ, `calculate_group_overlaps()` automatically uses the exact closed-form overlap for unequal-scale Gaussians (see `?calculate_group_overlaps`)  -  this is what made every unbalanced scenario above work without any special handling. In practice, you do not need to discard "extra" replicates from a richer group, or wait until both groups are equally sampled, to run a valid differential analysis.
 
 ## Go further
 

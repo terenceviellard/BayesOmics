@@ -63,7 +63,7 @@ every group to be measured on the exact same set of IDs.
 
 **Fix:** restrict the comparison to groups that share all their IDs, or make sure
 your input data frame has one row per (ID, Group, Sample) for every ID in every group
-before calling `multi_posterior_mean()`.
+before calling `posterior_mean()`.
 
 ## Groups do not share the same kernel matrix
 
@@ -86,7 +86,7 @@ data_bad <- data.frame(
   Output = c(0, 0),
   Input  = c(5, 6)  # same ID, two different Input values
 )
-multi_posterior_mean(data_bad, se_kernel(length_scale = 1))
+posterior_mean(data_bad, se_kernel(length_scale = 1))
 ```
 
 **Cause:** within a single group, `ID` must uniquely determine `Input` (e.g. one CpG
@@ -96,7 +96,7 @@ two physically different positions.
 
 **Fix:** check for duplicate/inconsistent `(Group, ID)` rows in your input data
 frame with `dplyr::distinct(data, Group, ID, Input)` and resolve the inconsistency
-before calling `multi_posterior_mean()`.
+before calling `posterior_mean()`.
 
 ## Group has IDs with different numbers of observations
 
@@ -108,10 +108,10 @@ data_uneven <- data.frame(
   Output = c(0, 1, 0),
   Input  = c(5, 5, 6)
 )
-multi_posterior_mean(data_uneven, se_kernel(length_scale = 1))
+posterior_mean(data_uneven, se_kernel(length_scale = 1))
 ```
 
-**Cause:** `multi_posterior_mean()` uses a single observation count per group (the
+**Cause:** `posterior_mean()` uses a single observation count per group (the
 posterior `scale` is `n_obs + lambda_0`); it requires every ID within a group to have
 the same number of replicate samples.
 
@@ -135,7 +135,7 @@ near-duplicate `Input` values in your data.
 
 **Cause:** a `Group` value in your data has no `ID` or no `Input` value associated
 with it -- usually an artefact of filtering the data frame before calling
-`multi_posterior_mean()`.
+`posterior_mean()`.
 
 **Fix:** drop unused factor levels / filter out the offending rows before fitting,
 e.g. `data <- droplevels(data[data$Group %in% kept_groups, ])`.

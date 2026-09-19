@@ -36,7 +36,7 @@
 #'     Computes the metric's value for one ordered pair of groups. \code{mu1}/\code{mu2}
 #'     are the groups' posterior means (aligned by ID), \code{Sigma1}/\code{Sigma2}
 #'     their posterior covariances (from the internal \code{get_sigmak()} helper), \code{scale1}/\code{scale2}
-#'     the \code{n_obs + lambda_0} divisors from \code{\link{multi_posterior_mean}},
+#'     the \code{n_obs + lambda_0} divisors from \code{\link{posterior_mean}},
 #'     and \code{same_kernel} whether the two groups share the same \code{kernel_key}.}
 #'   \item{\code{requires_shared_kernel(metric)}}{\code{TRUE} if the metric has
 #'     no valid formula unless the two groups share the same \code{kernel_key}
@@ -425,7 +425,7 @@ evaluate_metric.significant_fraction_metric <- function(metric, mu1, mu2, Sigma1
 #' is \code{TRUE} additionally require the two groups to share the same
 #' \code{kernel_key}.
 #'
-#' @param results A list, typically from \code{\link{multi_posterior_mean}},
+#' @param results A list, typically from \code{\link{posterior_mean}},
 #'   with elements \code{kernels} and \code{groups} (one entry per group,
 #'   each with \code{muk}, \code{id_to_input}, \code{kernel_key}, \code{scale}).
 #' @param metric A \code{distance_metric} object, e.g.
@@ -446,11 +446,11 @@ evaluate_metric.significant_fraction_metric <- function(metric, mu1, mu2, Sigma1
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5, diff_group = 5)
 #' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-#' posterior <- multi_posterior_mean(data, kern)
+#' posterior <- posterior_mean(data, kern)
 #' compute_group_diff(posterior, mahalanobis_metric())
 compute_group_diff <- function(results, metric, max_groups_warn = 50, max_dim_warn = 500) {
   if (!is.list(results) || !all(c("kernels", "groups") %in% names(results))) {
-    stop("'results' must be the list returned by multi_posterior_mean() (with 'kernels' and 'groups').")
+    stop("'results' must be the list returned by posterior_mean() (with 'kernels' and 'groups').")
   }
   if (!inherits(metric, "distance_metric")) {
     stop("'metric' must be a distance_metric object (e.g. ovl_metric(), kl_metric(), wasserstein_metric()).")

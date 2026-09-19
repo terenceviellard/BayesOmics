@@ -149,7 +149,7 @@ evaluate_sample_metric.sliced_wasserstein_metric <- function(metric, draws1, dra
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5, diff_group = 5)
 #' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-#' posterior <- multi_posterior_mean(data, kern)
+#' posterior <- posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 300)
 #' compute_group_diff_samples(samples, energy_metric())
 compute_group_diff_samples <- function(sample_distrib, metric) {

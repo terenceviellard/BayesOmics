@@ -462,10 +462,10 @@ test_that("plot_multi_diff: cumulative = TRUE does not error", {
 
 # -- plot_multi_diff: end-to-end integration ------------------------------------
 
-test_that("plot_multi_diff works end-to-end via simu_db -> multi_posterior_mean -> sample_posterior -> compute_multi_diff", {
+test_that("plot_multi_diff works end-to-end via simu_db -> posterior_mean -> sample_posterior -> compute_multi_diff", {
   data      <- simu_db(nb_id = 6, nb_group = 3, nb_sample = 5, diff_group = 5)
   kern      <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-  posterior <- multi_posterior_mean(data, kern)
+  posterior <- posterior_mean(data, kern)
   samples   <- sample_posterior(posterior, n = 200)
   multi_diff <- compute_multi_diff(samples, results = posterior)
   expect_no_error(plot_multi_diff(multi_diff))

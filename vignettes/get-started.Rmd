@@ -67,7 +67,7 @@ kern_true <- variance_kernel(variance = 10) * se_kernel(length_scale = 80)
 ## Simulating data
 
 `simu_db_kernel()` generates a dataset whose cross-feature covariance matches
-the generative model assumed by `multi_posterior_mean()`: for each group,
+the generative model assumed by `posterior_mean()`: for each group,
 the vector of outputs across all features is drawn jointly from a
 multivariate normal whose covariance is given by the kernel, plus independent
 measurement noise. Each replicate is an independent draw from that same
@@ -149,7 +149,7 @@ regardless of the true difference between groups. Keeping the fitted
 
 ## Computing posteriors
 
-`multi_posterior_mean()` applies the Normal-Normal conjugate update to every
+`posterior_mean()` applies the Normal-Normal conjugate update to every
 group at once:
 
 $$
@@ -166,7 +166,7 @@ hyperparameters, $\mu_0$ and $\lambda_0$ are the prior mean and precision, and
 $N$ is the number of replicates.
 
 ```{r}
-posterior <- multi_posterior_mean(data, kern_opt, mu_0 = prior_mean, lambda_0 = 1)
+posterior <- posterior_mean(data, kern_opt, mu_0 = prior_mean, lambda_0 = 1)
 print(posterior)
 ```
 

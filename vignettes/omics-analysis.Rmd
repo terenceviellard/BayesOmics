@@ -45,7 +45,7 @@ The pipeline has five stages:
 2. **Optimize kernel hyperparameters** (`optim_hp()`)  -  fit the
    kernel to the data by maximum likelihood, learning how far the
    correlation between features extends along `Input`.
-3. **Compute posteriors** (`multi_posterior_mean()`)  -  one posterior profile
+3. **Compute posteriors** (`posterior_mean()`)  -  one posterior profile
    per group, sharing kernel matrices across groups that share the same set
    of `Input` values.
 4. **Differential analysis** (`calculate_group_overlaps()`)  -  a pairwise
@@ -129,7 +129,7 @@ Compute the posterior profile of each group, and the OVL between them for the
 whole region:
 
 ```{r}
-posterior <- multi_posterior_mean(data, ker_opt, mu_0 = prior_mean, lambda_0 = 1)
+posterior <- posterior_mean(data, ker_opt, mu_0 = prior_mean, lambda_0 = 1)
 calculate_group_overlaps(posterior)
 print(posterior)
 ```
@@ -250,7 +250,7 @@ the residual noise on each per-feature sample mean
 Compute the posterior profile of each group and the full pairwise OVL matrix:
 
 ```{r}
-posterior4 <- multi_posterior_mean(data4, ker_opt4,
+posterior4 <- posterior_mean(data4, ker_opt4,
                                    mu_0 = prior_mean4, lambda_0 = 1)
 samples4   <- sample_posterior(posterior4, n = 2000)
 ```

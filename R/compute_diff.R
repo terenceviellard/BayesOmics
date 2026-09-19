@@ -44,7 +44,7 @@
 #' inversions of 400x400 matrices. A warning is issued if this is likely to be
 #' slow (see \code{max_groups_warn}/\code{max_dim_warn}).
 #'
-#' @param results A list, typically from \code{\link{multi_posterior_mean}},
+#' @param results A list, typically from \code{\link{posterior_mean}},
 #'   with elements \code{kernels} and \code{groups} (one entry per group,
 #'   each with \code{muk}, \code{id_to_input}, \code{kernel_key}, \code{scale}).
 #' @param max_groups_warn Emit a warning about the \eqn{O(G^2 d^3)} cost above
@@ -58,7 +58,7 @@
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5, diff_group = 5)
 #' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-#' posterior <- multi_posterior_mean(data, kern)
+#' posterior <- posterior_mean(data, kern)
 #' calculate_group_overlaps(posterior)
 calculate_group_overlaps <- function(results, max_groups_warn = 50, max_dim_warn = 500) {
   compute_group_diff(results, ovl_metric(), max_groups_warn = max_groups_warn, max_dim_warn = max_dim_warn)
@@ -113,7 +113,7 @@ extract_draw_matrix <- function(sample_distrib, group, ids) {
 #'    \code{sample_posterior()} function, containing the following columns:
 #'    \code{ID}, \code{Group} and \code{Sample}.
 #' @param results An optional list, typically from
-#'    \code{\link{multi_posterior_mean}}, with elements \code{kernels} and
+#'    \code{\link{posterior_mean}}, with elements \code{kernels} and
 #'    \code{groups}. If supplied, \code{\link{calculate_group_overlaps}} is
 #'    used to attach an exact \code{Overlap_coef} to the result. If \code{NULL}
 #'    (default), \code{Overlap_coef} is omitted.
@@ -133,7 +133,7 @@ extract_draw_matrix <- function(sample_distrib, group, ids) {
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 3, nb_sample = 5, diff_group = 5)
 #' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-#' posterior <- multi_posterior_mean(data, kern)
+#' posterior <- posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 500)
 #' multi_diff <- compute_multi_diff(samples, results = posterior)
 #' multi_diff$Diff_proba
@@ -195,7 +195,7 @@ compute_multi_diff <- function(sample_distrib, results = NULL) {
 
   if (!is.null(results)) {
     if (!is.list(results) || !all(c("kernels", "groups") %in% names(results))) {
-      stop("'results' must be the list returned by multi_posterior_mean() (with 'kernels' and 'groups'), or NULL.")
+      stop("'results' must be the list returned by posterior_mean() (with 'kernels' and 'groups'), or NULL.")
     }
     result_groups <- names(results$groups)
     if (!setequal(result_groups, groups)) {

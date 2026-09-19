@@ -89,7 +89,7 @@ opt          <- optim_hp(kern, control_data,
                          prior_mean = mean(control_data$Output), prior_cov = 1)
 kern         <- do.call(kupdate, c(list(kern), as.list(opt)))
 
-posterior <- multi_posterior_mean(data, kern)
+posterior <- posterior_mean(data, kern)
 calculate_group_overlaps(posterior)
 samples   <- sample_posterior(posterior, n = 2000)
 ```

@@ -54,7 +54,7 @@ metric only needs to implement \code{evaluate_metric}:
 Computes the metric's value for one ordered pair of groups. \code{mu1}/\code{mu2}
 are the groups' posterior means (aligned by ID), \code{Sigma1}/\code{Sigma2}
 their posterior covariances (from the internal \code{get_sigmak()} helper), \code{scale1}/\code{scale2}
-the \code{n_obs + lambda_0} divisors from \code{\link{multi_posterior_mean}},
+the \code{n_obs + lambda_0} divisors from \code{\link{posterior_mean}},
 and \code{same_kernel} whether the two groups share the same \code{kernel_key}.}
 \item{\code{requires_shared_kernel(metric)}}{\code{TRUE} if the metric has
 no valid formula unless the two groups share the same \code{kernel_key}

@@ -29,7 +29,7 @@ would be a slightly-biased nonzero estimate rather than exactly \code{0}.
 \examples{
 data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5, diff_group = 5)
 kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-posterior <- multi_posterior_mean(data, kern)
+posterior <- posterior_mean(data, kern)
 samples <- sample_posterior(posterior, n = 300)
 compute_group_diff_samples(samples, energy_metric())
 }

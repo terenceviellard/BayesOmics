@@ -147,7 +147,7 @@ simu_db_kernel_input_col <- function(nb_id, range_input, integer_input, input_gr
 #'
 #' @description
 #' Simulate a complete training dataset, similar to \code{simu_db()}, but consistent
-#' with the generative model underlying \code{\link{multi_posterior_mean}}: for each
+#' with the generative model underlying \code{\link{posterior_mean}}: for each
 #' group, the vector of Output values across the \code{nb_id} ids (indexed by their
 #' Input position) is drawn jointly from a multivariate normal distribution whose
 #' covariance is given by the kernel applied pairwise to the (shared, per-id) Input
@@ -157,7 +157,7 @@ simu_db_kernel_input_col <- function(nb_id, range_input, integer_input, input_gr
 #' where \eqn{\Sigma_\theta} is the kernel matrix over the (shared) Input values and
 #' \eqn{\sigma^2} is \code{var_sample}. This makes \eqn{\Sigma_\theta} -- not just the
 #' Input values -- shared across every group, exactly as assumed by
-#' \code{\link{multi_posterior_mean}} and required by \code{\link{calculate_group_overlaps}}.
+#' \code{\link{posterior_mean}} and required by \code{\link{calculate_group_overlaps}}.
 #'
 #' By default (\code{mu_random = FALSE}) the per-group mean \eqn{\mu_g} is a
 #' deterministic per-id baseline shifted by the corresponding element of \code{diff_group}.
@@ -332,7 +332,7 @@ simu_db_kernel <- function(
 
   # === Input generation ===
   # One column per Input dimension, shared across every group, so the kernel matrix
-  # is the same for every group -- required by multi_posterior_mean() and
+  # is the same for every group -- required by posterior_mean() and
   # calculate_group_overlaps(). Each dimension is drawn independently (its own
   # distinct-integer draw/grid within the shared range_input, when
   # integer_input = TRUE) rather than requiring globally-distinct D-tuples.

@@ -37,7 +37,7 @@ uncertainty-aware summary of whether two groups are differential.
 \examples{
 data <- simu_db(nb_id = 8, nb_group = 3, nb_sample = 5, diff_group = 5)
 kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-posterior <- multi_posterior_mean(data, kern)
+posterior <- posterior_mean(data, kern)
 samples <- sample_posterior(posterior, n = 500)
 multi_diff <- compute_multi_diff(samples, results = posterior)
 plot_multi_diff(multi_diff)

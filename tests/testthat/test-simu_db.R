@@ -77,7 +77,7 @@ test_that("simu_db: each (ID, Group) pair has a distinct Input", {
 
 test_that("simu_db: Input is shared across groups for the same ID", {
   # So that two groups built from the same simu_db() call end up with the
-  # same kernel_key in multi_posterior_mean(), enabling calculate_group_overlaps().
+  # same kernel_key in posterior_mean(), enabling calculate_group_overlaps().
   data <- simu_db(nb_id = 6, nb_group = 3, nb_sample = 2)
   for (id in unique(data$ID)) {
     inputs <- data$Input[data$ID == id]
@@ -303,9 +303,9 @@ test_that("simu_db_kernel works with nb_group = 1 and several samples", {
 # -- simu_db_kernel: Sigma_theta shared across groups ------------------------
 
 test_that("simu_db_kernel: every group shares the same kernel matrix (same Input set)", {
-  # Required for multi_posterior_mean() + calculate_group_overlaps() to work across groups.
+  # Required for posterior_mean() + calculate_group_overlaps() to work across groups.
   data <- simu_db_kernel(nb_id = 5, nb_group = 4, nb_sample = 2, kernel = make_kernel())
-  posterior <- multi_posterior_mean(data, make_kernel())
+  posterior <- posterior_mean(data, make_kernel())
   keys <- vapply(posterior$groups, function(g) g$kernel_key, character(1))
   expect_equal(length(unique(keys)), 1)
   expect_no_error(calculate_group_overlaps(posterior))

@@ -50,7 +50,7 @@ row_input_key <- function(mat) {
 #'   in the same matrix column regardless of row order in `db` -- this is
 #'   what keeps dimension identity aligned when the result is later compared
 #'   or combined with another such matrix (e.g. across groups in
-#'   `multi_posterior_mean()`, or across replicates in `optim_kernel.R`).
+#'   `posterior_mean()`, or across replicates in `optim_kernel.R`).
 #'
 #'   Errors if any `key_cols` combination has more than one row for the same
 #'   `Input_ID` (a duplicated dimension for one observation), or if the set

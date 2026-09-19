@@ -7,7 +7,7 @@
 compute_group_diff(results, metric, max_groups_warn = 50, max_dim_warn = 500)
 }
 \arguments{
-\item{results}{A list, typically from \code{\link{multi_posterior_mean}},
+\item{results}{A list, typically from \code{\link{posterior_mean}},
 with elements \code{kernels} and \code{groups} (one entry per group,
 each with \code{muk}, \code{id_to_input}, \code{kernel_key}, \code{scale}).}
 
@@ -41,6 +41,6 @@ is \code{TRUE} additionally require the two groups to share the same
 \examples{
 data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5, diff_group = 5)
 kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-posterior <- multi_posterior_mean(data, kern)
+posterior <- posterior_mean(data, kern)
 compute_group_diff(posterior, mahalanobis_metric())
 }

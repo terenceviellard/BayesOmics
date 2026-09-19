@@ -83,7 +83,7 @@ opt          <- optim_hp(c(1.0, 1.0), control_data,
                          prior_mean = mean(control_data$Output), kern = kern, prior_cov = 1)
 kern         <- set_hyperparameters(kern, opt)
 
-posterior <- multi_posterior_mean(data, kern)
+posterior <- posterior_mean(data, kern)
 calculate_group_overlaps(posterior)
 #>              1            2            3            4
 #> 1 1.000000e+00 4.153939e-02 0.0000415297 2.638245e-09

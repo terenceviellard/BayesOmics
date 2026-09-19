@@ -1,4 +1,4 @@
-# Full pipeline: simu_db -> optim_hp -> multi_posterior_mean -> sample_posterior
+# Full pipeline: simu_db -> optim_hp -> posterior_mean -> sample_posterior
 #               -> plot_distrib
 
 test_that("full pipeline runs without error", {
@@ -7,7 +7,7 @@ test_that("full pipeline runs without error", {
   kern <- make_kernel()
   hp   <- optim_hp(kern, data[data$Group == 1, ], 0, 1)
   kern <- do.call(keRnel::kupdate, c(list(kern), as.list(hp)))
-  res  <- multi_posterior_mean(data, kern)
+  res  <- posterior_mean(data, kern)
   long <- sample_posterior(res, 200)
   expect_s3_class(long, "data.frame")
   expect_named(long, c("ID", "Group", "Sample"))
@@ -17,7 +17,7 @@ test_that("pipeline produces long-format data compatible with plot_distrib", {
   set.seed(2)
   data <- simu_db(nb_id = 4, nb_group = 2, nb_sample = 2)
   kern <- make_kernel()
-  res  <- multi_posterior_mean(data, kern)
+  res  <- posterior_mean(data, kern)
   long <- sample_posterior(res, 300)
   gg   <- plot_distrib(long,
                        group1 = unique(long$Group)[1],
@@ -26,7 +26,7 @@ test_that("pipeline produces long-format data compatible with plot_distrib", {
   expect_s3_class(gg, "ggplot")
 })
 
-test_that("calculate_group_overlaps works on multi_posterior_mean output", {
+test_that("calculate_group_overlaps works on posterior_mean output", {
   set.seed(3)
   res <- make_posteriors(nb_id = 5, nb_group = 3)
   mat <- calculate_group_overlaps(res)
@@ -40,7 +40,7 @@ test_that("pipeline is reproducible end-to-end with set.seed", {
     set.seed(seed)
     data <- simu_db(nb_id = 5, nb_group = 2, nb_sample = 2)
     kern <- make_kernel()
-    res  <- multi_posterior_mean(data, kern)
+    res  <- posterior_mean(data, kern)
     set.seed(seed)
     sample_posterior(res, 100)
   }
@@ -54,7 +54,7 @@ test_that("pipeline handles nb_sample > 1 correctly in posterior", {
   data <- simu_db(nb_id = 6, nb_group = 2, nb_sample = 5)
   kern <- make_kernel()
   expect_no_error({
-    res  <- multi_posterior_mean(data, kern)
+    res  <- posterior_mean(data, kern)
     long <- sample_posterior(res, 100)
   })
   expect_equal(length(unique(long$ID)), 6)
@@ -68,8 +68,8 @@ test_that("optimized hyperparameters improve posterior fit", {
   hp   <- optim_hp(kern_opt, data[data$Group == 1, ], 0, 1)
   kern_opt <- do.call(keRnel::kupdate, c(list(kern_opt), as.list(hp)))
 
-  res0   <- multi_posterior_mean(data, kern0)
-  res_op <- multi_posterior_mean(data, kern_opt)
+  res0   <- posterior_mean(data, kern0)
+  res_op <- posterior_mean(data, kern_opt)
   # Both should produce valid structures
   for (g in names(res0$groups)) {
     expect_true(!anyNA(res0$groups[[g]]$muk))
@@ -81,7 +81,7 @@ test_that("calculate_group_overlaps works end-to-end on simu_db_kernel() output 
   set.seed(5)
   kern <- make_kernel()
   data <- simu_db_kernel(nb_id = 5, nb_group = 3, nb_sample = 4, kernel = kern)
-  res  <- multi_posterior_mean(data, kern)
+  res  <- posterior_mean(data, kern)
   mat  <- calculate_group_overlaps(res)
   expect_equal(dim(mat), c(3, 3))
   expect_equal(unname(diag(mat)), c(1, 1, 1))
@@ -92,7 +92,7 @@ test_that("plot_distrib dispatches to a pairwise grid for more than two groups",
   set.seed(4)
   data <- simu_db(nb_id = 4, nb_group = 4, nb_sample = 2)
   kern <- make_kernel()
-  res  <- multi_posterior_mean(data, kern)
+  res  <- posterior_mean(data, kern)
   long <- sample_posterior(res, 100)
   expect_no_error(plot_distrib(long, id = unique(long$ID)[1]))
 })

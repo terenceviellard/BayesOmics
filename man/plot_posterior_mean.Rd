@@ -27,7 +27,7 @@ plots produced by \code{plot_distrib()}.
 \examples{
 data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5)
 kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-posterior <- multi_posterior_mean(data, kern)
+posterior <- posterior_mean(data, kern)
 samples <- sample_posterior(posterior, n = 500)
 plot_posterior_mean(samples)
 }
