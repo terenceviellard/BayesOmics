@@ -16,6 +16,7 @@ knitr::opts_chunk$set(
 # BayesOmics
 
 <!-- badges: start -->
+[![pkgdown](https://github.com/terenceviellard/BayesOmics/actions/workflows/pkgdown.yml/badge.svg)](https://github.com/terenceviellard/BayesOmics/actions/workflows/pkgdown.yml)
 <!-- badges: end -->
 
 BayesOmics is an R package for Bayesian differential analysis of omics data.

@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "BayesOmics"
+abstract: >-
+  Bayesian differential analysis for omics data. The correlation structure
+  is captured by a kernel; hyperparameters are optimized by maximum
+  likelihood, and groups are compared via posterior distributions and an
+  overlapping coefficient.
+authors:
+  - family-names: "Viellard"
+    given-names: "Terence"
+url: "https://github.com/terenceviellard/BayesOmics"
+repository-code: "https://github.com/terenceviellard/BayesOmics"
+license: MIT

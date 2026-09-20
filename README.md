@@ -5,6 +5,7 @@
 
 <!-- badges: start -->
 
+[![pkgdown](https://github.com/terenceviellard/BayesOmics/actions/workflows/pkgdown.yml/badge.svg)](https://github.com/terenceviellard/BayesOmics/actions/workflows/pkgdown.yml)
 <!-- badges: end -->
 
 BayesOmics is an R package for Bayesian differential analysis of omics
@@ -77,19 +78,19 @@ library(BayesOmics)
 set.seed(42)
 data <- simu_db(nb_id = 25, nb_group = 4, nb_sample = 3, diff_group = 8)
 
-kern         <- new("SEKernel")
+kern         <- variance_kernel(variance = 1) * se_kernel(length_scale = 1)
 control_data <- data[data$Group == 1, ]
-opt          <- optim_hp(c(1.0, 1.0), control_data,
-                         prior_mean = mean(control_data$Output), kern = kern, prior_cov = 1)
-kern         <- set_hyperparameters(kern, opt)
+opt          <- optim_hp(kern, control_data,
+                         prior_mean = mean(control_data$Output), prior_cov = 1)
+kern         <- do.call(kupdate, c(list(kern), as.list(opt)))
 
 posterior <- posterior_mean(data, kern)
 calculate_group_overlaps(posterior)
 #>              1            2            3            4
-#> 1 1.000000e+00 4.153939e-02 0.0000415297 2.638245e-09
-#> 2 4.153939e-02 1.000000e+00 0.0342807480 7.643469e-05
-#> 3 4.152970e-05 3.428075e-02 1.0000000000 5.843933e-02
-#> 4 2.638245e-09 7.643469e-05 0.0584393272 1.000000e+00
+#> 1 1.000000e+00 4.361005e-02 4.870388e-05 3.687700e-09
+#> 2 4.361005e-02 1.000000e+00 3.536288e-02 8.501455e-05
+#> 3 4.870388e-05 3.536288e-02 1.000000e+00 5.908396e-02
+#> 4 3.687700e-09 8.501455e-05 5.908396e-02 1.000000e+00
 samples   <- sample_posterior(posterior, n = 2000)
 ```
 
