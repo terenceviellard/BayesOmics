@@ -16,6 +16,8 @@ posterior profile per group. Groups are then compared as complete
 multivariate profiles via an overlapping coefficient (OVL), giving a
 single, interpretable differential-analysis statistic per region.
 
+<img src="man/figures/pipeline.png" alt="BayesOmics pipeline: simulate/load data, optimize kernel hyperparameters, compute posterior per group, differential analysis (OVL)" width="100%" />
+
 ## When to use BayesOmics
 
 BayesOmics is designed for datasets where features are not independent

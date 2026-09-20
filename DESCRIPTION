@@ -5,6 +5,8 @@ Authors@R:
     person("Terence", "Viellard", , "terence.viellard@gmx.fr", role = c("aut", "cre"))
 Description: Bayesian differential analysis for omics data. The correlation structure is captured by a kernel. Users need to choose a kernel, optimize the hyperparameters, and then use the correlation matrix computed by this kernel in the analysis.
 License: MIT + file LICENSE
+URL: https://terenceviellard.github.io/BayesOmics/, https://github.com/terenceviellard/BayesOmics
+BugReports: https://github.com/terenceviellard/BayesOmics/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Imports:

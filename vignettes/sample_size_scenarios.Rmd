@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 ```{r setup}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(keRnel)
-devtools::load_all(".")
+library(BayesOmics)
 library(ggplot2)
 ```
 

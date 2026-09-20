@@ -15,6 +15,7 @@ navbar:
     github:
       icon: fab fa-github
       href: https://github.com/terenceviellard/BayesOmics
+      aria-label: GitHub source code
 
 articles:
   - title: Getting started
