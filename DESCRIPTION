@@ -2,12 +2,11 @@ Package: BayesOmics
 Title: Bayesian Differential Analysis for Omics Data
 Version: 0.0.0.9000
 Authors@R:
-    person("Térence", "Viellard", , "terence.viellard@gmx.fr", role = c("aut", "cre"))
+    person("Terence", "Viellard", , "terence.viellard@gmx.fr", role = c("aut", "cre"))
 Description: Bayesian differential analysis for omics data. The correlation structure is captured by a kernel. Users need to choose a kernel, optimize the hyperparameters, and then use the correlation matrix computed by this kernel in the analysis.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Imports:
     stats,
     dplyr,
@@ -22,9 +21,11 @@ Imports:
     utils
 Suggests:
     knitr,
+    pkgdown,
     rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 Remotes:
-    terenceviellard/keRnel
+    terenceviellard/keRnel@new
+Config/roxygen2/version: 8.0.0

@@ -7,7 +7,7 @@
 sample_posterior(results, n)
 }
 \arguments{
-\item{results}{A list returned by \code{\link{multi_posterior_mean}}, with
+\item{results}{A list returned by \code{\link{posterior_mean}}, with
 elements \code{kernels} and \code{groups}.}
 
 \item{n}{A number indicating the number of samples}
@@ -23,9 +23,8 @@ reshape the result directly into the long-format data frame expected by
 }
 \examples{
 data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5)
-kern <- methods::new("SEKernel")
-kern <- keRnel::set_hyperparameters(kern, c(variance_se = 1, length_scale_se = 1))
-posterior <- multi_posterior_mean(data, kern)
+kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
+posterior <- posterior_mean(data, kern)
 samples <- sample_posterior(posterior, n = 100)
 head(samples)
 }

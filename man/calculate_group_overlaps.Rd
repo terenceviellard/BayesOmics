@@ -7,7 +7,7 @@
 calculate_group_overlaps(results, max_groups_warn = 50, max_dim_warn = 500)
 }
 \arguments{
-\item{results}{A list, typically from \code{\link{multi_posterior_mean}},
+\item{results}{A list, typically from \code{\link{posterior_mean}},
 with elements \code{kernels} and \code{groups} (one entry per group,
 each with \code{muk}, \code{id_to_input}, \code{kernel_key}, \code{scale}).}
 
@@ -62,8 +62,7 @@ slow (see \code{max_groups_warn}/\code{max_dim_warn}).
 }
 \examples{
 data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5, diff_group = 5)
-kern <- methods::new("SEKernel")
-kern <- keRnel::set_hyperparameters(kern, c(variance_se = 1, length_scale_se = 1))
-posterior <- multi_posterior_mean(data, kern)
+kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
+posterior <- posterior_mean(data, kern)
 calculate_group_overlaps(posterior)
 }
