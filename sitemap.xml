@@ -2,10 +2,18 @@
 <url><loc>https://terenceviellard.github.io/BayesOmics/404.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/LICENSE-text.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/LICENSE.html</loc></url>
+<url><loc>https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.html</loc></url>
+<url><loc>https://terenceviellard.github.io/BayesOmics/articles/02_univariate.html</loc></url>
+<url><loc>https://terenceviellard.github.io/BayesOmics/articles/03_pooled_vs_nonpooled.html</loc></url>
+<url><loc>https://terenceviellard.github.io/BayesOmics/articles/04_multi_group.html</loc></url>
+<url><loc>https://terenceviellard.github.io/BayesOmics/articles/05_metric_choice.html</loc></url>
+<url><loc>https://terenceviellard.github.io/BayesOmics/articles/06_kernel_choice.html</loc></url>
+<url><loc>https://terenceviellard.github.io/BayesOmics/articles/07_unequal_sample_size.html</loc></url>
+<url><loc>https://terenceviellard.github.io/BayesOmics/articles/08_multi_dim_input.html</loc></url>
+<url><loc>https://terenceviellard.github.io/BayesOmics/articles/09_block_diagonal.html</loc></url>
+<url><loc>https://terenceviellard.github.io/BayesOmics/articles/10_real_data.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/articles/get-started.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/articles/index.html</loc></url>
-<url><loc>https://terenceviellard.github.io/BayesOmics/articles/omics-analysis.html</loc></url>
-<url><loc>https://terenceviellard.github.io/BayesOmics/articles/sample_size_scenarios.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/articles/troubleshooting.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/authors.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/index.html</loc></url>
@@ -19,8 +27,10 @@
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/evaluate_metric.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/evaluate_sample_metric.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/fit_block_posterior.html</loc></url>
+<url><loc>https://terenceviellard.github.io/BayesOmics/reference/fit_kernel.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/get_muk_block.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/get_sigmak_block.html</loc></url>
+<url><loc>https://terenceviellard.github.io/BayesOmics/reference/group_diff.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/hellinger_metric.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/index.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/jeffreys_metric.html</loc></url>
@@ -29,7 +39,6 @@
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/marginal_metric.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/mean_diff_metric.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/mmd_metric.html</loc></url>
-<url><loc>https://terenceviellard.github.io/BayesOmics/reference/optim_hp.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/ovl_metric.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/partition_by_id.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/partition_by_range.html</loc></url>
@@ -46,6 +55,7 @@
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/plot_posterior_overlap.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/posterior_mean.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/print.bayesomics_posterior.html</loc></url>
+<url><loc>https://terenceviellard.github.io/BayesOmics/reference/print.group_diff_result.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/resolve_partition.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/sample_posterior.html</loc></url>
 <url><loc>https://terenceviellard.github.io/BayesOmics/reference/significant_fraction_metric.html</loc></url>

@@ -2,7 +2,7 @@
 
 BayesOmics is an R package for Bayesian differential analysis of omics
 data. It places a kernel over the feature dimension (genomic position,
-mass-to-charge ratio, retention time, …) to capture correlation
+mass-to-charge ratio, retention time, â€¦) to capture correlation
 structure, fits that kernel by maximum likelihood, and computes a
 posterior profile per group. Groups are then compared as complete
 multivariate profiles via an overlapping coefficient (OVL), giving a
@@ -15,7 +15,7 @@ hyperparameters, compute posterior per group, differential analysis
 ## When to use BayesOmics
 
 BayesOmics is designed for datasets where features are not independent
-but share a meaningful ordering or distance along some axis — genomic
+but share a meaningful ordering or distance along some axis â€” genomic
 position, retention time, dose level, time point, m/z ratio, or any
 other continuous covariate. Classical per-feature tests (t-test, limma)
 ignore that structure and multiply the number of comparisons. BayesOmics
@@ -79,17 +79,19 @@ data <- simu_db(nb_id = 25, nb_group = 4, nb_sample = 3, diff_group = 8)
 
 kern         <- variance_kernel(variance = 1) * se_kernel(length_scale = 1)
 control_data <- data[data$Group == 1, ]
-opt          <- optim_hp(kern, control_data,
+opt          <- fit_kernel(kern, control_data,
                          prior_mean = mean(control_data$Output), prior_cov = 1)
 kern         <- do.call(kupdate, c(list(kern), as.list(opt)))
 
 posterior <- posterior_mean(data, kern)
-calculate_group_overlaps(posterior)
-#>              1            2            3            4
-#> 1 1.000000e+00 4.361005e-02 4.870388e-05 3.687700e-09
-#> 2 4.361005e-02 1.000000e+00 3.536288e-02 8.501455e-05
-#> 3 4.870388e-05 3.536288e-02 1.000000e+00 5.908396e-02
-#> 4 3.687700e-09 8.501455e-05 5.908396e-02 1.000000e+00
+group_diff(posterior)
+#> Metric: per_feature_metric(wasserstein_metric(), power = 0.5) 
+#> 
+#>           1         2         3         4
+#> 1  0.000000  6.031284 12.129416 17.615459
+#> 2  6.031284  0.000000  6.264025 11.704798
+#> 3 12.129416  6.264025  0.000000  5.600068
+#> 4 17.615459 11.704798  5.600068  0.000000
 samples   <- sample_posterior(posterior, n = 2000)
 ```
 
@@ -116,59 +118,97 @@ plot_posterior_mean(samples)
 
 | Vignette | What you will find |
 |----|----|
-| [`vignette("get-started")`](https://terenceviellard.github.io/BayesOmics/articles/get-started.md) | Data format, kernel choice, step-by-step pipeline, and basic plots — the right place to start. |
-| [`vignette("omics-analysis")`](https://terenceviellard.github.io/BayesOmics/articles/omics-analysis.md) | Full worked examples (two-group and multi-group dose-response) with kernel composition, HP interpretation, and every plot function. |
-| [`vignette("sample_size_scenarios")`](https://terenceviellard.github.io/BayesOmics/articles/sample_size_scenarios.md) | How unbalanced designs affect posterior width and the OVL, and why the comparison remains valid with unequal sample sizes. |
+| [`vignette("get-started")`](https://terenceviellard.github.io/BayesOmics/articles/get-started.md) | Data format, kernel choice, step-by-step pipeline, and basic plots â€” the right place to start. |
+| [`vignette("01_basic_pipeline")`](https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.md) | The complete two-group walkthrough - kernel choice, hyperparameter fitting, posterior computation, [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md). |
+| [`vignette("04_multi_group")`](https://terenceviellard.github.io/BayesOmics/articles/04_multi_group.md) | Reading a [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md) matrix and [`plot_multi_diff()`](https://terenceviellard.github.io/BayesOmics/reference/plot_multi_diff.md) output for more than two groups (e.g. a dose-response design). |
+| [`vignette("07_unequal_sample_size")`](https://terenceviellard.github.io/BayesOmics/articles/07_unequal_sample_size.md) | How unbalanced designs affect posterior width and the OVL, and why the comparison remains valid with unequal sample sizes. |
 | [`vignette("troubleshooting")`](https://terenceviellard.github.io/BayesOmics/articles/troubleshooting.md) | Exact error messages you may encounter, what causes each of them, and the targeted fix. |
 
 # Package index
 
-## All functions
+## Simulate data
 
-- [`as_block_diag_matrix()`](https://terenceviellard.github.io/BayesOmics/reference/as_block_diag_matrix.md)
-  : Assemble a Dense Block-Diagonal Covariance Matrix
-- [`bhattacharyya_metric()`](https://terenceviellard.github.io/BayesOmics/reference/bhattacharyya_metric.md)
-  : Bhattacharyya Distance Metric
-- [`calculate_group_overlaps()`](https://terenceviellard.github.io/BayesOmics/reference/calculate_group_overlaps.md)
-  : Compute Overlapping Coefficient between Groups
+- [`simu_db()`](https://terenceviellard.github.io/BayesOmics/reference/simu_db.md)
+  : Generate a Synthetic Dataset for BayesOmics
+- [`simu_db_kernel()`](https://terenceviellard.github.io/BayesOmics/reference/simu_db_kernel.md)
+  : Generate a Synthetic Dataset with Kernel-Structured Covariance
+
+## Fit the kernel
+
+- [`fit_kernel()`](https://terenceviellard.github.io/BayesOmics/reference/fit_kernel.md)
+  : Optimize Hyperparameters for a kernel (with additive kernel support)
+- [`fit_block_posterior()`](https://terenceviellard.github.io/BayesOmics/reference/fit_block_posterior.md)
+  : Fit Independent Posteriors per Block
+
+## Posterior
+
+- [`posterior_mean()`](https://terenceviellard.github.io/BayesOmics/reference/posterior_mean.md)
+  : Compute Posterior Means for Different Groups
+- [`sample_posterior()`](https://terenceviellard.github.io/BayesOmics/reference/sample_posterior.md)
+  : Sample from a Normal multivariate distribution
+- [`get_muk_block()`](https://terenceviellard.github.io/BayesOmics/reference/get_muk_block.md)
+  : Concatenate Per-Block Posterior Means for a Group
+- [`get_sigmak_block()`](https://terenceviellard.github.io/BayesOmics/reference/get_sigmak_block.md)
+  : Reconstruct Per-Block Posterior Covariances for a Group
+- [`print(`*`<bayesomics_posterior>`*`)`](https://terenceviellard.github.io/BayesOmics/reference/print.bayesomics_posterior.md)
+  : Print a BayesOmics Posterior Object
+
+## Differential analysis
+
+- [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md)
+  : Compare Two Groups' Posteriors, with a Sensible Default Metric
 - [`compute_group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/compute_group_diff.md)
   : Compute a Pairwise Group-Difference Metric
 - [`compute_group_diff_samples()`](https://terenceviellard.github.io/BayesOmics/reference/compute_group_diff_samples.md)
   : Compute a Pairwise Draw-Based Group-Difference Metric
 - [`compute_multi_diff()`](https://terenceviellard.github.io/BayesOmics/reference/compute_multi_diff.md)
   : Compute the Multivariate Distribution of Group Differences
+- [`calculate_group_overlaps()`](https://terenceviellard.github.io/BayesOmics/reference/calculate_group_overlaps.md)
+  : Compute Overlapping Coefficient between Groups
+- [`print(`*`<group_diff_result>`*`)`](https://terenceviellard.github.io/BayesOmics/reference/print.group_diff_result.md)
+  : Print a Group-Difference Result
+
+## Distance metrics
+
+- [`ovl_metric()`](https://terenceviellard.github.io/BayesOmics/reference/ovl_metric.md)
+  : Gaussian Overlapping Coefficient (OVL) Metric
+- [`wasserstein_metric()`](https://terenceviellard.github.io/BayesOmics/reference/wasserstein_metric.md)
+  : Wasserstein-2 (Frechet) Distance Metric
+- [`kl_metric()`](https://terenceviellard.github.io/BayesOmics/reference/kl_metric.md)
+  : Kullback-Leibler Divergence Metric
+- [`jeffreys_metric()`](https://terenceviellard.github.io/BayesOmics/reference/jeffreys_metric.md)
+  : Symmetrized Jeffreys Divergence Metric
+- [`bhattacharyya_metric()`](https://terenceviellard.github.io/BayesOmics/reference/bhattacharyya_metric.md)
+  : Bhattacharyya Distance Metric
+- [`hellinger_metric()`](https://terenceviellard.github.io/BayesOmics/reference/hellinger_metric.md)
+  : Hellinger Distance Metric
+- [`mahalanobis_metric()`](https://terenceviellard.github.io/BayesOmics/reference/mahalanobis_metric.md)
+  : Mahalanobis Distance Metric
+- [`mean_diff_metric()`](https://terenceviellard.github.io/BayesOmics/reference/mean_diff_metric.md)
+  : Mean Absolute Difference of Means Metric
+- [`tvd_metric()`](https://terenceviellard.github.io/BayesOmics/reference/tvd_metric.md)
+  : Total Variation Distance
+- [`per_feature_metric()`](https://terenceviellard.github.io/BayesOmics/reference/per_feature_metric.md)
+  : Per-Feature-Normalized Metric
+- [`marginal_metric()`](https://terenceviellard.github.io/BayesOmics/reference/marginal_metric.md)
+  : Marginal-Averaged Metric
+- [`significant_fraction_metric()`](https://terenceviellard.github.io/BayesOmics/reference/significant_fraction_metric.md)
+  : Fraction of Individually Significant Features
 - [`energy_metric()`](https://terenceviellard.github.io/BayesOmics/reference/energy_metric.md)
   : Energy Distance Metric
+- [`mmd_metric()`](https://terenceviellard.github.io/BayesOmics/reference/mmd_metric.md)
+  : Maximum Mean Discrepancy (MMD) Metric
+- [`sliced_wasserstein_metric()`](https://terenceviellard.github.io/BayesOmics/reference/sliced_wasserstein_metric.md)
+  : Sliced Wasserstein Distance Metric
 - [`evaluate_metric()`](https://terenceviellard.github.io/BayesOmics/reference/evaluate_metric.md)
   [`requires_shared_kernel()`](https://terenceviellard.github.io/BayesOmics/reference/evaluate_metric.md)
   [`is_symmetric_metric()`](https://terenceviellard.github.io/BayesOmics/reference/evaluate_metric.md)
   : Group-Difference Metrics for BayesOmics Posteriors
 - [`evaluate_sample_metric()`](https://terenceviellard.github.io/BayesOmics/reference/evaluate_sample_metric.md)
   : Draw-Based Group-Difference Metrics
-- [`fit_block_posterior()`](https://terenceviellard.github.io/BayesOmics/reference/fit_block_posterior.md)
-  : Fit Independent Posteriors per Block
-- [`get_muk_block()`](https://terenceviellard.github.io/BayesOmics/reference/get_muk_block.md)
-  : Concatenate Per-Block Posterior Means for a Group
-- [`get_sigmak_block()`](https://terenceviellard.github.io/BayesOmics/reference/get_sigmak_block.md)
-  : Reconstruct Per-Block Posterior Covariances for a Group
-- [`hellinger_metric()`](https://terenceviellard.github.io/BayesOmics/reference/hellinger_metric.md)
-  : Hellinger Distance Metric
-- [`jeffreys_metric()`](https://terenceviellard.github.io/BayesOmics/reference/jeffreys_metric.md)
-  : Symmetrized Jeffreys Divergence Metric
-- [`kl_metric()`](https://terenceviellard.github.io/BayesOmics/reference/kl_metric.md)
-  : Kullback-Leibler Divergence Metric
-- [`mahalanobis_metric()`](https://terenceviellard.github.io/BayesOmics/reference/mahalanobis_metric.md)
-  : Mahalanobis Distance Metric
-- [`marginal_metric()`](https://terenceviellard.github.io/BayesOmics/reference/marginal_metric.md)
-  : Marginal-Averaged Metric
-- [`mean_diff_metric()`](https://terenceviellard.github.io/BayesOmics/reference/mean_diff_metric.md)
-  : Mean Absolute Difference of Means Metric
-- [`mmd_metric()`](https://terenceviellard.github.io/BayesOmics/reference/mmd_metric.md)
-  : Maximum Mean Discrepancy (MMD) Metric
-- [`optim_hp()`](https://terenceviellard.github.io/BayesOmics/reference/optim_hp.md)
-  : Optimize Hyperparameters for a kernel (with additive kernel support)
-- [`ovl_metric()`](https://terenceviellard.github.io/BayesOmics/reference/ovl_metric.md)
-  : Gaussian Overlapping Coefficient (OVL) Metric
+
+## Block-diagonal partitioning
+
 - [`partition_by_id()`](https://terenceviellard.github.io/BayesOmics/reference/partition_by_id.md)
   : Explicit Manual ID-to-Block Assignment
 - [`partition_by_range()`](https://terenceviellard.github.io/BayesOmics/reference/partition_by_range.md)
@@ -182,8 +222,13 @@ plot_posterior_mean(samples)
   : Diagonal Partition (One Block per ID)
 - [`partition_from_annotation()`](https://terenceviellard.github.io/BayesOmics/reference/partition_from_annotation.md)
   : Partition IDs from an External Annotation
-- [`per_feature_metric()`](https://terenceviellard.github.io/BayesOmics/reference/per_feature_metric.md)
-  : Per-Feature-Normalized Metric
+- [`resolve_partition()`](https://terenceviellard.github.io/BayesOmics/reference/resolve_partition.md)
+  : Resolve a Partition Strategy into a Block Assignment
+- [`as_block_diag_matrix()`](https://terenceviellard.github.io/BayesOmics/reference/as_block_diag_matrix.md)
+  : Assemble a Dense Block-Diagonal Covariance Matrix
+
+## Plots
+
 - [`plot_distrib()`](https://terenceviellard.github.io/BayesOmics/reference/plot_distrib.md)
   : Plot the posterior distribution(s) of the difference of means
 - [`plot_distrib_each_pair()`](https://terenceviellard.github.io/BayesOmics/reference/plot_distrib_each_pair.md)
@@ -196,26 +241,6 @@ plot_posterior_mean(samples)
   : Plot the posterior mean as a function of id
 - [`plot_posterior_overlap()`](https://terenceviellard.github.io/BayesOmics/reference/plot_posterior_overlap.md)
   : Plot overlaid posterior distributions and their overlap
-- [`posterior_mean()`](https://terenceviellard.github.io/BayesOmics/reference/posterior_mean.md)
-  : Compute Posterior Means for Different Groups
-- [`print(`*`<bayesomics_posterior>`*`)`](https://terenceviellard.github.io/BayesOmics/reference/print.bayesomics_posterior.md)
-  : Print a BayesOmics Posterior Object
-- [`resolve_partition()`](https://terenceviellard.github.io/BayesOmics/reference/resolve_partition.md)
-  : Resolve a Partition Strategy into a Block Assignment
-- [`sample_posterior()`](https://terenceviellard.github.io/BayesOmics/reference/sample_posterior.md)
-  : Sample from a Normal multivariate distribution
-- [`significant_fraction_metric()`](https://terenceviellard.github.io/BayesOmics/reference/significant_fraction_metric.md)
-  : Fraction of Individually Significant Features
-- [`simu_db()`](https://terenceviellard.github.io/BayesOmics/reference/simu_db.md)
-  : Generate a Synthetic Dataset for BayesOmics
-- [`simu_db_kernel()`](https://terenceviellard.github.io/BayesOmics/reference/simu_db_kernel.md)
-  : Generate a Synthetic Dataset with Kernel-Structured Covariance
-- [`sliced_wasserstein_metric()`](https://terenceviellard.github.io/BayesOmics/reference/sliced_wasserstein_metric.md)
-  : Sliced Wasserstein Distance Metric
-- [`tvd_metric()`](https://terenceviellard.github.io/BayesOmics/reference/tvd_metric.md)
-  : Total Variation Distance
-- [`wasserstein_metric()`](https://terenceviellard.github.io/BayesOmics/reference/wasserstein_metric.md)
-  : Wasserstein-2 (Frechet) Distance Metric
 
 # Articles
 
@@ -226,11 +251,26 @@ plot_posterior_mean(samples)
 
 ### Analyses
 
-- [Omics analysis: two-group and multi-group
-  examples](https://terenceviellard.github.io/BayesOmics/articles/omics-analysis.md):
-- [Unbalanced Designs: Differential Analysis with Different Sample Sizes
-  per
-  Group](https://terenceviellard.github.io/BayesOmics/articles/sample_size_scenarios.md):
+- [Basic pipeline: comparing two groups with a spatial
+  kernel](https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.md):
+- [Univariate mode: comparing two groups with no feature
+  axis](https://terenceviellard.github.io/BayesOmics/articles/02_univariate.md):
+- [Pooled vs. non-pooled: one kernel for every group, or one per
+  group](https://terenceviellard.github.io/BayesOmics/articles/03_pooled_vs_nonpooled.md):
+- [Comparing more than two
+  groups](https://terenceviellard.github.io/BayesOmics/articles/04_multi_group.md):
+- [Choosing a metric: OVL vs.
+  Wasserstein](https://terenceviellard.github.io/BayesOmics/articles/05_metric_choice.md):
+- [Using a kernel other than Squared
+  Exponential](https://terenceviellard.github.io/BayesOmics/articles/06_kernel_choice.md):
+- [Comparing groups with different sample
+  sizes](https://terenceviellard.github.io/BayesOmics/articles/07_unequal_sample_size.md):
+- [Input with more than one
+  dimension](https://terenceviellard.github.io/BayesOmics/articles/08_multi_dim_input.md):
+- [Scaling up with a block-diagonal
+  partition](https://terenceviellard.github.io/BayesOmics/articles/09_block_diagonal.md):
+- [Working from real data instead of a
+  simulation](https://terenceviellard.github.io/BayesOmics/articles/10_real_data.md):
 
 ### Troubleshooting
 

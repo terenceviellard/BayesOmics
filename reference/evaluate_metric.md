@@ -23,10 +23,11 @@ new metric only needs to implement `evaluate_metric`:
 
 - `requires_shared_kernel(metric)`:
 
-  `TRUE` if the metric has no valid formula unless the two groups share
-  the same `kernel_key` (only
-  [`ovl_metric`](https://terenceviellard.github.io/BayesOmics/reference/ovl_metric.md)).
-  Defaults to `FALSE`.
+  `TRUE` if the metric has no valid formula at all unless the two groups
+  share the same `kernel_key` (no metric here needs this –
+  [`ovl_metric`](https://terenceviellard.github.io/BayesOmics/reference/ovl_metric.md)
+  instead switches internally to a Monte Carlo/KDE fallback when they
+  don't, see its own documentation). Defaults to `FALSE`.
 
 - `is_symmetric_metric(metric)`:
 

@@ -18,8 +18,8 @@ exactly what you would see in your own console.
 
 data <- simu_db(nb_id = 20)
 kern <- variance_kernel(variance = 0.01) * se_kernel(length_scale = 0.01)
-opt  <- optim_hp(kern, data, prior_mean = 0, prior_cov = 1, max_iter = 1)
-#> Warning in optim_hp(kern, data, prior_mean = 0, prior_cov = 1, max_iter = 1):
+opt  <- fit_kernel(kern, data, prior_mean = 0, prior_cov = 1, max_iter = 1)
+#> Warning in fit_kernel(kern, data, prior_mean = 0, prior_cov = 1, max_iter = 1):
 #> L-BFGS-B did not converge (code 1). Results may be unreliable. Consider
 #> increasing max_iter or adjusting pen_diag.
 ```
@@ -53,40 +53,52 @@ bad_results <- list(
     B = list(muk = c(ID_1 = 0, ID_3 = 1), id_to_input = c(ID_1 = 1, ID_3 = 2), kernel_key = "k", scale = 1)
   )
 )
-calculate_group_overlaps(bad_results)
+group_diff(bad_results)
 #> Error in `kern_mat[input_keys, input_keys, drop = FALSE]`:
 #> ! no 'dimnames' attribute for array
 ```
 
 **Cause:**
-[`calculate_group_overlaps()`](https://terenceviellard.github.io/BayesOmics/reference/calculate_group_overlaps.md)
-compares two groups ID by ID; it requires every group to be measured on
-the exact same set of IDs.
+[`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md)
+(like every group-comparison function) compares two groups ID by ID; it
+requires every group to be measured on the exact same set of IDs.
 
 **Fix:** restrict the comparison to groups that share all their IDs, or
 make sure your input data frame has one row per (ID, Group, Sample) for
 every ID in every group before calling
 [`posterior_mean()`](https://terenceviellard.github.io/BayesOmics/reference/posterior_mean.md).
 
-## Groups do not share the same kernel matrix
+## Groups do not share the same kernel matrix (no longer an error for OVL)
 
-**Cause:** two groups have different sets of `Input` values
-(e.g. different genomic positions), so their posterior covariances don’t
-derive from the same raw kernel matrix. The closed-form overlap formula
-used by
-[`calculate_group_overlaps()`](https://terenceviellard.github.io/BayesOmics/reference/calculate_group_overlaps.md)
-only applies when both groups share one kernel matrix, scaled
-differently by `scale`.
+Two groups can have different sets of `Input` values (e.g. different
+genomic positions), or be fitted with genuinely different kernels (e.g.
+`posterior_mean(pooled = FALSE)`), so their posterior covariances don’t
+derive from the same raw kernel matrix.
+[`ovl_metric()`](https://terenceviellard.github.io/BayesOmics/reference/ovl_metric.md)
+(and therefore
+[`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md)/[`calculate_group_overlaps()`](https://terenceviellard.github.io/BayesOmics/reference/calculate_group_overlaps.md))
+handles this automatically: it uses the exact closed-form formula when
+the two groups do share one kernel matrix, and falls back to a Monte
+Carlo/KDE estimate otherwise – no error, no metric to switch by hand.
+See
+[`?ovl_metric`](https://terenceviellard.github.io/BayesOmics/reference/ovl_metric.md)
+for how that fallback works and its accuracy tradeoff (noisier, and
+increasingly unreliable as the number of shared IDs grows).
 
-**Fix:** make sure every group in your data is measured at the same
-`Input` values for the same `ID`s –
-[`simu_db()`](https://terenceviellard.github.io/BayesOmics/reference/simu_db.md)
-and
-[`simu_db_kernel()`](https://terenceviellard.github.io/BayesOmics/reference/simu_db_kernel.md)
-do this by construction. If your real data genuinely has different
-`Input` values per group, you cannot compare those two groups with
-[`calculate_group_overlaps()`](https://terenceviellard.github.io/BayesOmics/reference/calculate_group_overlaps.md)
-directly.
+A custom metric can still opt into the strict behavior by defining its
+own
+[`requires_shared_kernel()`](https://terenceviellard.github.io/BayesOmics/reference/evaluate_metric.md)
+method returning `TRUE`;
+[`compute_group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/compute_group_diff.md)
+then errors for that metric specifically when the two groups don’t share
+a kernel matrix, with no fallback.
+
+See
+[`vignette("03_pooled_vs_nonpooled")`](https://terenceviellard.github.io/BayesOmics/articles/03_pooled_vs_nonpooled.md)
+for when `pooled = FALSE` produces this on purpose, and
+[`vignette("05_metric_choice")`](https://terenceviellard.github.io/BayesOmics/articles/05_metric_choice.md)
+for why the OVL fallback exists and its accuracy/cost tradeoff in more
+detail.
 
 ## Each ID must map to a single Input value within its group
 
@@ -143,7 +155,7 @@ same number of replicate samples.
 **Fix:** make sure every ID in a group has the same number of `Sample`
 rows – e.g. by filling in missing replicates or subsetting to a balanced
 design. See
-[`vignette("sample_size_scenarios")`](https://terenceviellard.github.io/BayesOmics/articles/sample_size_scenarios.md)
+[`vignette("07_unequal_sample_size")`](https://terenceviellard.github.io/BayesOmics/articles/07_unequal_sample_size.md)
 for designs with different replicate counts *across* groups (which is
 supported), as opposed to across IDs *within* the same group (which is
 not).
@@ -174,5 +186,13 @@ e.g. `data <- droplevels(data[data$Group %in% kept_groups, ])`.
 
 | Vignette | What you will find |
 |----|----|
-| [`vignette("omics-analysis")`](https://terenceviellard.github.io/BayesOmics/articles/omics-analysis.md) | The complete model walkthrough - kernel choice, hyperparameter fitting, posterior computation, and every plot function - on both a two-group and a multi-group example. |
-| [`vignette("sample_size_scenarios")`](https://terenceviellard.github.io/BayesOmics/articles/sample_size_scenarios.md) | How unbalanced designs (different replicate counts per group) affect posterior width and the final OVL, and why the comparison remains valid even with strongly unequal counts. |
+| [`vignette("01_basic_pipeline")`](https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.md) | The complete two-group walkthrough – kernel choice, hyperparameter fitting, posterior computation, [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md). Start here for the full model pipeline. |
+| [`vignette("02_univariate")`](https://terenceviellard.github.io/BayesOmics/articles/02_univariate.md) | Comparing two groups with no feature axis at all (a single scalar per replicate). |
+| [`vignette("03_pooled_vs_nonpooled")`](https://terenceviellard.github.io/BayesOmics/articles/03_pooled_vs_nonpooled.md) | Fitting one shared kernel vs. one independent kernel per group – and exactly when that makes two groups stop sharing a kernel matrix (see above). |
+| [`vignette("04_multi_group")`](https://terenceviellard.github.io/BayesOmics/articles/04_multi_group.md) | Reading a [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md) matrix and [`plot_multi_diff()`](https://terenceviellard.github.io/BayesOmics/reference/plot_multi_diff.md) output for more than two groups. |
+| [`vignette("05_metric_choice")`](https://terenceviellard.github.io/BayesOmics/articles/05_metric_choice.md) | Why the joint OVL saturates as the number of features grows, when to prefer per-feature Wasserstein instead, and the logic [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md) automates. |
+| [`vignette("06_kernel_choice")`](https://terenceviellard.github.io/BayesOmics/articles/06_kernel_choice.md) | Choosing a kernel other than Squared Exponential. |
+| [`vignette("07_unequal_sample_size")`](https://terenceviellard.github.io/BayesOmics/articles/07_unequal_sample_size.md) | How unbalanced designs (different replicate counts *per group*) affect posterior width and the final comparison, and why it remains valid even with strongly unequal counts. |
+| [`vignette("08_multi_dim_input")`](https://terenceviellard.github.io/BayesOmics/articles/08_multi_dim_input.md) | `Input` with more than one dimension (`Input_ID`), and why the fit code needs no change. |
+| [`vignette("09_block_diagonal")`](https://terenceviellard.github.io/BayesOmics/articles/09_block_diagonal.md) | Scaling up to many features via a block-diagonal partition ([`fit_block_posterior()`](https://terenceviellard.github.io/BayesOmics/reference/fit_block_posterior.md)). |
+| [`vignette("10_real_data")`](https://terenceviellard.github.io/BayesOmics/articles/10_real_data.md) | Reshaping a real dataset (not a simulation) into the BayesOmics long format, including a ready-to-use AI-assistant prompt. |

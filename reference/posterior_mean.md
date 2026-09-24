@@ -42,17 +42,25 @@ posterior_mean(
 - kern:
 
   A kernel object (from the keRnel package) used to compute pairwise
-  covariances. Defaults to `NULL`, in which case a diagonal
+  covariances, or a named list of kernel objects (one entry per group in
+  `data`, e.g. from
+  [`fit_kernel`](https://terenceviellard.github.io/BayesOmics/reference/fit_kernel.md)`(..., group_col = "Group", pooled = FALSE)`)
+  to give each group its own, independently fitted kernel – every group
+  then gets its own `kernel_key`, so metrics with
+  `requires_shared_kernel() == TRUE` (e.g.
+  [`ovl_metric`](https://terenceviellard.github.io/BayesOmics/reference/ovl_metric.md))
+  cannot compare them (same caveat as `pooled = FALSE` below). Defaults
+  to `NULL`, in which case a diagonal
   ([`keRnel::white_noise_kernel()`](https://rdrr.io/pkg/keRnel/man/white_noise_kernel.html))
   kernel is built automatically from a closed-form residual-variance
   estimate – the exact REML minimizer
-  `optim_hp(..., group_col = "Group")` would converge to numerically,
+  `fit_kernel(..., group_col = "Group")` would converge to numerically,
   computed directly instead (see `resolve_closed_form_kernel()` in
   `R/optim_kernel.R` and `dev/univariate/NOTES_univariate.md` for the
   derivation). This is the natural default in univariate mode, but also
   works with a real 'ID'/'Input' design (every feature is then treated
   as independent – no spatial structure – unlike a real kernel fit via
-  [`optim_hp()`](https://terenceviellard.github.io/BayesOmics/reference/optim_hp.md),
+  [`fit_kernel()`](https://terenceviellard.github.io/BayesOmics/reference/fit_kernel.md),
   which must be supplied explicitly via `kern` for that).
 
 - mu_0:
@@ -67,7 +75,7 @@ posterior_mean(
 
   Fixed, known observation-noise variance to add back into the posterior
   covariance (see `get_sigmak()`'s `@details`). Needed whenever `kern`'s
-  hyperparameters were fit with `optim_hp(..., prior_cov = )` treating
+  hyperparameters were fit with `fit_kernel(..., prior_cov = )` treating
   that same value as a separate additive nugget rather than composing it
   into `kern` itself (e.g. via a `NoiseKernel()` term) – otherwise the
   reported credible interval only reflects uncertainty about whatever
@@ -143,7 +151,7 @@ kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale =
 posterior <- posterior_mean(data, kern)
 posterior$groups[["1"]]$muk
 #>      ID_1      ID_2      ID_3      ID_4      ID_5      ID_6      ID_7      ID_8 
-#> 13.001781 12.404722 14.968516  3.894459  8.906924  4.690719  3.370661 22.507813 
+#> 21.443325 25.540041  1.661871 39.638712 21.827400 35.635310 36.030173 38.510365 
 
 # Univariate mode (single CpG/feature): no 'ID'/'Input' columns, no kernel
 # object needed -- a warning is issued and the noise variance is estimated

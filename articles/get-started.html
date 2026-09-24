@@ -6,6 +6,11 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Get started with BayesOmics • BayesOmics</title>
+<!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
+<link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+<link rel="icon" sizes="any" href="../favicon.ico">
+<link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
@@ -35,8 +40,16 @@
 <li><a class="dropdown-item" href="../articles/get-started.html">Get started with BayesOmics</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Analyses</h6></li>
-    <li><a class="dropdown-item" href="../articles/omics-analysis.html">Omics analysis: two-group and multi-group examples</a></li>
-    <li><a class="dropdown-item" href="../articles/sample_size_scenarios.html">Unbalanced Designs: Differential Analysis with Different Sample Sizes per Group</a></li>
+    <li><a class="dropdown-item" href="../articles/01_basic_pipeline.html">Basic pipeline: comparing two groups with a spatial kernel</a></li>
+    <li><a class="dropdown-item" href="../articles/02_univariate.html">Univariate mode: comparing two groups with no feature axis</a></li>
+    <li><a class="dropdown-item" href="../articles/03_pooled_vs_nonpooled.html">Pooled vs. non-pooled: one kernel for every group, or one per group</a></li>
+    <li><a class="dropdown-item" href="../articles/04_multi_group.html">Comparing more than two groups</a></li>
+    <li><a class="dropdown-item" href="../articles/05_metric_choice.html">Choosing a metric: OVL vs. Wasserstein</a></li>
+    <li><a class="dropdown-item" href="../articles/06_kernel_choice.html">Using a kernel other than Squared Exponential</a></li>
+    <li><a class="dropdown-item" href="../articles/07_unequal_sample_size.html">Comparing groups with different sample sizes</a></li>
+    <li><a class="dropdown-item" href="../articles/08_multi_dim_input.html">Input with more than one dimension</a></li>
+    <li><a class="dropdown-item" href="../articles/09_block_diagonal.html">Scaling up with a block-diagonal partition</a></li>
+    <li><a class="dropdown-item" href="../articles/10_real_data.html">Working from real data instead of a simulation</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Troubleshooting</h6></li>
     <li><a class="dropdown-item" href="../articles/troubleshooting.html">Troubleshooting: common errors and how to fix them</a></li>
@@ -58,8 +71,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-
-      <h1>Get started with BayesOmics</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Get started with BayesOmics</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/terenceviellard/BayesOmics/blob/main/vignettes/get-started.Rmd" class="external-link"><code>vignettes/get-started.Rmd</code></a></small>
@@ -160,7 +172,7 @@ y_n \mid \mu_g \sim \mathcal{N}(\mu_g,\; \Sigma_\theta + \sigma^2 I),
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
 <span><span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simu_db_kernel.html">simu_db_kernel</a></span><span class="op">(</span></span>
 <span>  kernel      <span class="op">=</span> <span class="va">kern_true</span>,</span>
-<span>  nb_id       <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  nb_id       <span class="op">=</span> <span class="fl">6</span>,</span>
 <span>  nb_group    <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  nb_sample   <span class="op">=</span> <span class="fl">8</span>,</span>
 <span>  diff_group  <span class="op">=</span> <span class="fl">0.8</span>,</span>
@@ -169,12 +181,12 @@ y_n \mid \mu_g \sim \mathcal{N}(\mu_g,\; \Sigma_\theta + \sigma^2 I),
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span></span>
 <span><span class="co">#&gt;     ID Group Sample Input_ID     Input   Output</span></span>
-<span><span class="co">#&gt; 1 ID_1     1      1        1 182.96121 24.58898</span></span>
-<span><span class="co">#&gt; 2 ID_2     1      1        1 187.41508 29.09520</span></span>
-<span><span class="co">#&gt; 3 ID_3     1      1        1  57.22791 24.94038</span></span>
-<span><span class="co">#&gt; 4 ID_4     1      1        1 166.08953 31.75284</span></span>
-<span><span class="co">#&gt; 5 ID_5     1      1        1 128.34910 27.42014</span></span>
-<span><span class="co">#&gt; 6 ID_6     1      1        1 103.81919 30.37618</span></span></code></pre></div>
+<span><span class="co">#&gt; 1 ID_1     1      1        1 182.96121 27.45107</span></span>
+<span><span class="co">#&gt; 2 ID_2     1      1        1 187.41508 27.79998</span></span>
+<span><span class="co">#&gt; 3 ID_3     1      1        1  57.22791 25.17421</span></span>
+<span><span class="co">#&gt; 4 ID_4     1      1        1 166.08953 31.04831</span></span>
+<span><span class="co">#&gt; 5 ID_5     1      1        1 128.34910 27.50101</span></span>
+<span><span class="co">#&gt; 6 ID_6     1      1        1 103.81919 32.39520</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="combining-kernels-adding-a-noise-term">Combining kernels: adding a Noise term<a class="anchor" aria-label="anchor" href="#combining-kernels-adding-a-noise-term"></a>
@@ -201,20 +213,20 @@ from the measurement noise
 <div class="section level2">
 <h2 id="optimizing-hyperparameters">Optimizing hyperparameters<a class="anchor" aria-label="anchor" href="#optimizing-hyperparameters"></a>
 </h2>
-<p><code><a href="../reference/optim_hp.html">optim_hp()</a></code> fits all hyperparameters by maximizing the
+<p><code><a href="../reference/fit_kernel.html">fit_kernel()</a></code> fits all hyperparameters by maximizing the
 marginal likelihood of the output values.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">groupe1</span><span class="op">=</span><span class="va">data</span><span class="op">[</span><span class="va">data</span><span class="op">$</span><span class="va">Group</span> <span class="op">==</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">data</span><span class="op">$</span><span class="va">Group</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="op">]</span></span>
 <span><span class="va">prior_mean</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">groupe1</span><span class="op">$</span><span class="va">Output</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">hp_opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/optim_hp.html">optim_hp</a></span><span class="op">(</span><span class="va">kern</span>, <span class="va">groupe1</span>, prior_mean <span class="op">=</span> <span class="va">prior_mean</span>, prior_cov <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">hp_opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_kernel.html">fit_kernel</a></span><span class="op">(</span><span class="va">kern</span>, <span class="va">groupe1</span>, prior_mean <span class="op">=</span> <span class="va">prior_mean</span>, prior_cov <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">hp_opt</span></span>
 <span><span class="co">#&gt;     variance length_scale        noise </span></span>
-<span><span class="co">#&gt;    15.524043    98.495702     4.491037 </span></span>
+<span><span class="co">#&gt;    14.958183    79.344669     5.054674 </span></span>
 <span><span class="co">#&gt; attr(,"convergence")</span></span>
 <span><span class="co">#&gt; [1] 0</span></span>
 <span><span class="co">#&gt; attr(,"value")</span></span>
-<span><span class="co">#&gt; [1] 203.0034</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 128.2874</span></span></code></pre></div>
 <p><code>length_scale</code> (~ 98) lands in the same ballpark as its
 simulation value (80), confirming that correlation extends over most of
 the 200-unit axis. <code>variance</code> (~ 15.5) and <code>noise</code>
@@ -265,39 +277,31 @@ is the number of replicates.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">posterior</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;BayesOmics posterior&gt; 2 group(s), 1 cached kernel matrix/matrices</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; -- Group 1 (10 IDs) --</span></span>
+<span><span class="co">#&gt; -- Group 1 (6 IDs) --</span></span>
 <span><span class="co">#&gt; Posterior mean:</span></span>
-<span><span class="co">#&gt;   ID_1  ID_10   ID_2   ID_3   ID_4   ID_5   ID_6   ID_7   ID_8   ID_9 </span></span>
-<span><span class="co">#&gt; 25.401 24.406 25.633 24.114 23.551 24.798 25.055 24.908 25.574 24.904 </span></span>
+<span><span class="co">#&gt;   ID_1   ID_2   ID_3   ID_4   ID_5   ID_6 </span></span>
+<span><span class="co">#&gt; 23.860 24.735 24.539 24.271 24.483 24.158 </span></span>
 <span><span class="co">#&gt; Posterior covariance:</span></span>
-<span><span class="co">#&gt;        ID_1 ID_10  ID_2  ID_3  ID_4  ID_5  ID_6  ID_7  ID_8  ID_9</span></span>
-<span><span class="co">#&gt; ID_1  2.224 1.575 1.723 0.764 1.700 1.479 1.249 1.616 0.492 1.504</span></span>
-<span><span class="co">#&gt; ID_10 1.575 2.224 1.544 1.201 1.670 1.711 1.606 1.721 0.882 1.717</span></span>
-<span><span class="co">#&gt; ID_2  1.723 1.544 2.224 0.720 1.685 1.441 1.203 1.588 0.457 1.467</span></span>
-<span><span class="co">#&gt; ID_3  0.764 1.201 0.720 2.224 0.936 1.329 1.542 1.135 1.645 1.299</span></span>
-<span><span class="co">#&gt; ID_4  1.700 1.670 1.685 0.936 2.224 1.603 1.412 1.694 0.636 1.621</span></span>
-<span><span class="co">#&gt; ID_5  1.479 1.711 1.441 1.329 1.603 2.224 1.672 1.693 1.015 1.724</span></span>
-<span><span class="co">#&gt; ID_6  1.249 1.606 1.203 1.542 1.412 1.672 2.224 1.565 1.272 1.659</span></span>
-<span><span class="co">#&gt; ID_7  1.616 1.721 1.588 1.135 1.694 1.693 1.565 2.224 0.817 1.703</span></span>
-<span><span class="co">#&gt; ID_8  0.492 0.882 0.457 1.645 0.636 1.015 1.272 0.817 2.224 0.983</span></span>
-<span><span class="co">#&gt; ID_9  1.504 1.717 1.467 1.299 1.621 1.724 1.659 1.703 0.983 2.224</span></span>
+<span><span class="co">#&gt;       ID_1  ID_2  ID_3  ID_4  ID_5  ID_6</span></span>
+<span><span class="co">#&gt; ID_1 2.224 1.659 0.474 1.625 1.311 1.011</span></span>
+<span><span class="co">#&gt; ID_2 1.659 2.224 0.433 1.603 1.260 0.954</span></span>
+<span><span class="co">#&gt; ID_3 0.474 0.433 2.224 0.648 1.112 1.399</span></span>
+<span><span class="co">#&gt; ID_4 1.625 1.603 0.648 2.224 1.484 1.221</span></span>
+<span><span class="co">#&gt; ID_5 1.311 1.260 1.112 1.484 2.224 1.584</span></span>
+<span><span class="co">#&gt; ID_6 1.011 0.954 1.399 1.221 1.584 2.224</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; -- Group 2 (10 IDs) --</span></span>
+<span><span class="co">#&gt; -- Group 2 (6 IDs) --</span></span>
 <span><span class="co">#&gt; Posterior mean:</span></span>
-<span><span class="co">#&gt;   ID_1  ID_10   ID_2   ID_3   ID_4   ID_5   ID_6   ID_7   ID_8   ID_9 </span></span>
-<span><span class="co">#&gt; 24.756 24.018 23.944 24.942 24.095 25.204 25.346 23.415 25.451 25.214 </span></span>
+<span><span class="co">#&gt;   ID_1   ID_2   ID_3   ID_4   ID_5   ID_6 </span></span>
+<span><span class="co">#&gt; 27.133 25.827 26.887 26.098 25.874 27.387 </span></span>
 <span><span class="co">#&gt; Posterior covariance:</span></span>
-<span><span class="co">#&gt;        ID_1 ID_10  ID_2  ID_3  ID_4  ID_5  ID_6  ID_7  ID_8  ID_9</span></span>
-<span><span class="co">#&gt; ID_1  2.224 1.575 1.723 0.764 1.700 1.479 1.249 1.616 0.492 1.504</span></span>
-<span><span class="co">#&gt; ID_10 1.575 2.224 1.544 1.201 1.670 1.711 1.606 1.721 0.882 1.717</span></span>
-<span><span class="co">#&gt; ID_2  1.723 1.544 2.224 0.720 1.685 1.441 1.203 1.588 0.457 1.467</span></span>
-<span><span class="co">#&gt; ID_3  0.764 1.201 0.720 2.224 0.936 1.329 1.542 1.135 1.645 1.299</span></span>
-<span><span class="co">#&gt; ID_4  1.700 1.670 1.685 0.936 2.224 1.603 1.412 1.694 0.636 1.621</span></span>
-<span><span class="co">#&gt; ID_5  1.479 1.711 1.441 1.329 1.603 2.224 1.672 1.693 1.015 1.724</span></span>
-<span><span class="co">#&gt; ID_6  1.249 1.606 1.203 1.542 1.412 1.672 2.224 1.565 1.272 1.659</span></span>
-<span><span class="co">#&gt; ID_7  1.616 1.721 1.588 1.135 1.694 1.693 1.565 2.224 0.817 1.703</span></span>
-<span><span class="co">#&gt; ID_8  0.492 0.882 0.457 1.645 0.636 1.015 1.272 0.817 2.224 0.983</span></span>
-<span><span class="co">#&gt; ID_9  1.504 1.717 1.467 1.299 1.621 1.724 1.659 1.703 0.983 2.224</span></span></code></pre></div>
+<span><span class="co">#&gt;       ID_1  ID_2  ID_3  ID_4  ID_5  ID_6</span></span>
+<span><span class="co">#&gt; ID_1 2.224 1.659 0.474 1.625 1.311 1.011</span></span>
+<span><span class="co">#&gt; ID_2 1.659 2.224 0.433 1.603 1.260 0.954</span></span>
+<span><span class="co">#&gt; ID_3 0.474 0.433 2.224 0.648 1.112 1.399</span></span>
+<span><span class="co">#&gt; ID_4 1.625 1.603 0.648 2.224 1.484 1.221</span></span>
+<span><span class="co">#&gt; ID_5 1.311 1.260 1.112 1.484 2.224 1.584</span></span>
+<span><span class="co">#&gt; ID_6 1.011 0.954 1.399 1.221 1.584 2.224</span></span></code></pre></div>
 <p>Draw samples from the posteriors for plotting and the overlap
 calculation:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
@@ -306,10 +310,14 @@ calculation:</p>
 <div class="section level2">
 <h2 id="differential-analysis">Differential analysis<a class="anchor" aria-label="anchor" href="#differential-analysis"></a>
 </h2>
-<p><code><a href="../reference/calculate_group_overlaps.html">calculate_group_overlaps()</a></code> returns the pairwise
-Overlapping Coefficient (OVL) between every pair of groups. Groups with
-different sample sizes are fully supported - see
-<code><a href="../articles/sample_size_scenarios.html">vignette("sample_size_scenarios")</a></code> for a detailed
+<p><code><a href="../reference/group_diff.html">group_diff()</a></code> compares every pair of groups with a
+sensible default metric, chosen automatically from the number of
+features being compared – no metric to pick by hand (see
+<code><a href="../reference/group_diff.html">?group_diff</a></code> if you want to choose one explicitly,
+e.g. <code>group_diff(posterior, wasserstein_metric())</code>). With 6
+features here, it picks the pairwise Overlapping Coefficient (OVL).
+Groups with different sample sizes are fully supported - see
+<code><a href="../articles/07_unequal_sample_size.html">vignette("07_unequal_sample_size")</a></code> for a detailed
 exploration of how replicate counts affect posterior width and the
 resulting OVL. OVL = 1 means identical posteriors (no differential
 signal); OVL ~ 0 means fully separated profiles (strong differential
@@ -324,10 +332,12 @@ under the posterior covariance of the reference group, and
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi mathvariant="normal">Φ</mi><annotation encoding="application/x-tex">\Phi</annotation></semantics></math>
 is the standard normal CDF.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/calculate_group_overlaps.html">calculate_group_overlaps</a></span><span class="op">(</span><span class="va">posterior</span><span class="op">)</span></span>
-<span><span class="co">#&gt;           1         2</span></span>
-<span><span class="co">#&gt; 1 1.0000000 0.1217735</span></span>
-<span><span class="co">#&gt; 2 0.1217735 1.0000000</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/group_diff.html">group_diff</a></span><span class="op">(</span><span class="va">posterior</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Metric: ovl_metric(n_mc = 2000) </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;            1          2</span></span>
+<span><span class="co">#&gt; 1 1.00000000 0.09446298</span></span>
+<span><span class="co">#&gt; 2 0.09446298 1.00000000</span></span></code></pre></div>
 <p>Overlapping coefficient can be seen as a single-number summary of the
 differential signal on the whole region of interest. It is useful for
 ranking features, but it is sensible to curse of dimensionality: the
@@ -344,24 +354,20 @@ posterior-mean panel already seen above:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">multi_diff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_multi_diff.html">compute_multi_diff</a></span><span class="op">(</span><span class="va">samples</span>, results <span class="op">=</span> <span class="va">posterior</span><span class="op">)</span></span>
 <span><span class="va">multi_diff</span><span class="op">$</span><span class="va">Diff_proba</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 11 × 5</span></span></span>
-<span><span class="co">#&gt;    Group1 Group2 Nb_id  Proba Cumul_proba</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 1      2          0 0.077        0.077</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 1      2          1 0.089        0.166</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 1      2          2 0.086        0.252</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 1      2          3 0.082<span style="text-decoration: underline;">5</span>       0.334</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 1      2          4 0.092<span style="text-decoration: underline;">5</span>       0.427</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 1      2          5 0.089<span style="text-decoration: underline;">5</span>       0.516</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 1      2          6 0.079<span style="text-decoration: underline;">5</span>       0.596</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 1      2          7 0.088        0.684</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1      2          8 0.096<span style="text-decoration: underline;">5</span>       0.780</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1      2          9 0.096<span style="text-decoration: underline;">5</span>       0.877</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">11</span> 1      2         10 0.123        1</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 7 × 5</span></span></span>
+<span><span class="co">#&gt;   Group1 Group2 Nb_id  Proba Cumul_proba</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 1      2          0 0.513        0.513</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 1      2          1 0.224        0.737</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 1      2          2 0.122        0.859</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 1      2          3 0.064        0.923</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1      2          4 0.049        0.972</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 1      2          5 0.022<span style="text-decoration: underline;">5</span>       0.994</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">7</span> 1      2          6 0.005<span style="text-decoration: underline;">5</span>       1</span></span></code></pre></div>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_multi_diff.html">plot_multi_diff</a></span><span class="op">(</span><span class="va">multi_diff</span><span class="op">)</span></span></code></pre></div>
-<p><img src="get-started_files/figure-html/unnamed-chunk-11-1.png" class="r-plt" alt="Empirical distribution of the number of features where group 1's posterior draw exceeds group 2's, spread broadly across 0 to 10 features rather than spiked at either extreme, alongside the posterior-mean-per-feature panel" width="576"></p>
-<p>The bar-chart panel is spread broadly across 0 to 10 features, rather
+<p><img src="get-started_files/figure-html/unnamed-chunk-11-1.png" class="r-plt" alt="Empirical distribution of the number of features where group 1's posterior draw exceeds group 2's, spread broadly across 0 to 6 features rather than spiked at either extreme, alongside the posterior-mean-per-feature panel" width="576"></p>
+<p>The bar-chart panel is spread broadly across 0 to 6 features, rather
 than spiked at either extreme – group 1 does not exceed group 2 on every
 feature, nor on none. This is consistent with a real, but partial and
 non-caricatural, differential signal: exactly the kind of nuance the
@@ -400,20 +406,36 @@ visual counterpart of the OVL coefficient:</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code><a href="../articles/omics-analysis.html">vignette("omics-analysis")</a></code></td>
-<td>Full worked examples - realistic biological context, kernel
-composition (SE + Noise), HP interpretation, two-group and four-group
-dose-response designs, and every plot function.</td>
+<td><code><a href="../articles/01_basic_pipeline.html">vignette("01_basic_pipeline")</a></code></td>
+<td>The complete two-group walkthrough - kernel choice, hyperparameter
+fitting, posterior computation, <code><a href="../reference/group_diff.html">group_diff()</a></code>.</td>
 </tr>
 <tr class="even">
-<td><code><a href="../articles/sample_size_scenarios.html">vignette("sample_size_scenarios")</a></code></td>
+<td><code><a href="../articles/04_multi_group.html">vignette("04_multi_group")</a></code></td>
+<td>Reading a <code><a href="../reference/group_diff.html">group_diff()</a></code> matrix and
+<code><a href="../reference/plot_multi_diff.html">plot_multi_diff()</a></code> output for more than two groups (e.g. a
+dose-response design).</td>
+</tr>
+<tr class="odd">
+<td><code><a href="../articles/05_metric_choice.html">vignette("05_metric_choice")</a></code></td>
+<td>Why the joint OVL saturates as the number of features grows, and
+when to prefer per-feature Wasserstein instead.</td>
+</tr>
+<tr class="even">
+<td><code><a href="../articles/07_unequal_sample_size.html">vignette("07_unequal_sample_size")</a></code></td>
 <td>How unbalanced designs affect posterior width and the OVL, and why
 the comparison remains valid with strongly unequal sample sizes.</td>
 </tr>
 <tr class="odd">
+<td><code><a href="../articles/10_real_data.html">vignette("10_real_data")</a></code></td>
+<td>Reshaping a real dataset (not a simulation) into the BayesOmics long
+format.</td>
+</tr>
+<tr class="even">
 <td><code><a href="../articles/troubleshooting.html">vignette("troubleshooting")</a></code></td>
 <td>Exact error messages you may encounter, what causes each of them,
-and the targeted fix.</td>
+and the targeted fix - with a full index of every analysis
+vignette.</td>
 </tr>
 </tbody>
 </table>

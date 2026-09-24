@@ -2,11 +2,19 @@ pandoc: 3.8.3
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
+  01_basic_pipeline: 01_basic_pipeline.html
+  02_univariate: 02_univariate.html
+  03_pooled_vs_nonpooled: 03_pooled_vs_nonpooled.html
+  04_multi_group: 04_multi_group.html
+  05_metric_choice: 05_metric_choice.html
+  06_kernel_choice: 06_kernel_choice.html
+  07_unequal_sample_size: 07_unequal_sample_size.html
+  08_multi_dim_input: 08_multi_dim_input.html
+  09_block_diagonal: 09_block_diagonal.html
+  10_real_data: 10_real_data.html
   get-started: get-started.html
-  omics-analysis: omics-analysis.html
-  sample_size_scenarios: sample_size_scenarios.html
   troubleshooting: troubleshooting.html
-last_built: 2026-09-20T12:42Z
+last_built: 2026-09-24T15:38Z
 urls:
   reference: https://terenceviellard.github.io/BayesOmics/reference
   article: https://terenceviellard.github.io/BayesOmics/articles

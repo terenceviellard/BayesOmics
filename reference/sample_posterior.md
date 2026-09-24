@@ -36,10 +36,10 @@ posterior <- posterior_mean(data, kern)
 samples <- sample_posterior(posterior, n = 100)
 head(samples)
 #>     ID Group   Sample
-#> 1 ID_1     1 21.09615
-#> 2 ID_1     1 21.40886
-#> 3 ID_1     1 21.31273
-#> 4 ID_1     1 21.92299
-#> 5 ID_1     1 21.72313
-#> 6 ID_1     1 20.97156
+#> 1 ID_1     1 40.01014
+#> 2 ID_1     1 39.30320
+#> 3 ID_1     1 38.85781
+#> 4 ID_1     1 39.91554
+#> 5 ID_1     1 39.64177
+#> 6 ID_1     1 39.04484
 ```

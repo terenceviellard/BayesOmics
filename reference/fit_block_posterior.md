@@ -1,7 +1,7 @@
 # Fit Independent Posteriors per Block
 
 Splits `data` according to `partition`, then calls the unchanged
-[`posterior_mean`](https://terenceviellard.github.io/BayesOmics/reference/posterior_mean.md)/[`optim_hp`](https://terenceviellard.github.io/BayesOmics/reference/optim_hp.md)
+[`posterior_mean`](https://terenceviellard.github.io/BayesOmics/reference/posterior_mean.md)/[`fit_kernel`](https://terenceviellard.github.io/BayesOmics/reference/fit_kernel.md)
 pipeline independently per sub-problem (per block, or per
 `(Group, block)` when `pooled = FALSE`), collecting the results into a
 list consultable via
@@ -59,7 +59,7 @@ fit_block_posterior(
   `NULL` (closed form, as in
   [`posterior_mean()`](https://terenceviellard.github.io/BayesOmics/reference/posterior_mean.md)),
   or an UNFITTED kernel object (template) – in that case
-  [`optim_hp()`](https://terenceviellard.github.io/BayesOmics/reference/optim_hp.md)
+  [`fit_kernel()`](https://terenceviellard.github.io/BayesOmics/reference/fit_kernel.md)
   is called once per sub-problem before building its posterior
   (mirroring how
   [`posterior_mean()`](https://terenceviellard.github.io/BayesOmics/reference/posterior_mean.md)
@@ -70,12 +70,15 @@ fit_block_posterior(
   A single parameter threaded to both branches: when `kern = NULL`,
   passed straight through to
   `posterior_mean(kern = NULL, pooled = pooled)`; when `kern` is an
-  unfitted template, `TRUE` fits one `optim_hp(group_col = "Group")`
+  unfitted template, `TRUE` fits one `fit_kernel(group_col = "Group")`
   shared across every Group within a block, `FALSE` fits an independent
-  [`optim_hp()`](https://terenceviellard.github.io/BayesOmics/reference/optim_hp.md)
+  [`fit_kernel()`](https://terenceviellard.github.io/BayesOmics/reference/fit_kernel.md)
   per `(Group, block)`. Defaults to `TRUE`, matching
   [`posterior_mean()`](https://terenceviellard.github.io/BayesOmics/reference/posterior_mean.md)'s
-  own default.
+  own default. See also
+  [`fit_kernel`](https://terenceviellard.github.io/BayesOmics/reference/fit_kernel.md)'s
+  own `pooled` argument for the same pooled/non-pooled choice without
+  the block-partitioning machinery.
 
 - mu_0, lambda_0, obs_noise, df_warn:
 
@@ -86,7 +89,7 @@ fit_block_posterior(
 - prior_mean, prior_cov, pen_diag:
 
   Forwarded to
-  [`optim_hp()`](https://terenceviellard.github.io/BayesOmics/reference/optim_hp.md)
+  [`fit_kernel()`](https://terenceviellard.github.io/BayesOmics/reference/fit_kernel.md)
   when `kern` is an unfitted template; see its documentation.
 
 ## Value

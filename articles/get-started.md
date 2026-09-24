@@ -73,7 +73,7 @@ y_n \mid \mu_g \sim \mathcal{N}(\mu_g,\; \Sigma_\theta + \sigma^2 I),
 set.seed(42)
 data <- simu_db_kernel(
   kernel      = kern_true,
-  nb_id       = 10,
+  nb_id       = 6,
   nb_group    = 2,
   nb_sample   = 8,
   diff_group  = 0.8,
@@ -82,12 +82,12 @@ data <- simu_db_kernel(
 )
 head(data)
 #>     ID Group Sample Input_ID     Input   Output
-#> 1 ID_1     1      1        1 182.96121 24.58898
-#> 2 ID_2     1      1        1 187.41508 29.09520
-#> 3 ID_3     1      1        1  57.22791 24.94038
-#> 4 ID_4     1      1        1 166.08953 31.75284
-#> 5 ID_5     1      1        1 128.34910 27.42014
-#> 6 ID_6     1      1        1 103.81919 30.37618
+#> 1 ID_1     1      1        1 182.96121 27.45107
+#> 2 ID_2     1      1        1 187.41508 27.79998
+#> 3 ID_3     1      1        1  57.22791 25.17421
+#> 4 ID_4     1      1        1 166.08953 31.04831
+#> 5 ID_5     1      1        1 128.34910 27.50101
+#> 6 ID_6     1      1        1 103.81919 32.39520
 ```
 
 ## Combining kernels: adding a Noise term
@@ -112,7 +112,7 @@ Using an SE + Noise kernel for optimization separates the spatial signal
 
 ## Optimizing hyperparameters
 
-[`optim_hp()`](https://terenceviellard.github.io/BayesOmics/reference/optim_hp.md)
+[`fit_kernel()`](https://terenceviellard.github.io/BayesOmics/reference/fit_kernel.md)
 fits all hyperparameters by maximizing the marginal likelihood of the
 output values.
 
@@ -121,14 +121,14 @@ output values.
 groupe1=data[data$Group == unique(data$Group)[1], ]
 prior_mean   <- mean(groupe1$Output)
 
-hp_opt <- optim_hp(kern, groupe1, prior_mean = prior_mean, prior_cov = 1)
+hp_opt <- fit_kernel(kern, groupe1, prior_mean = prior_mean, prior_cov = 1)
 hp_opt
 #>     variance length_scale        noise 
-#>    15.524043    98.495702     4.491037 
+#>    14.958183    79.344669     5.054674 
 #> attr(,"convergence")
 #> [1] 0
 #> attr(,"value")
-#> [1] 203.0034
+#> [1] 128.2874
 ```
 
 `length_scale` (~ 98) lands in the same ballpark as its simulation value
@@ -181,39 +181,31 @@ posterior <- posterior_mean(data, kern_opt, mu_0 = prior_mean, lambda_0 = 1)
 print(posterior)
 #> <BayesOmics posterior> 2 group(s), 1 cached kernel matrix/matrices
 #> 
-#> -- Group 1 (10 IDs) --
+#> -- Group 1 (6 IDs) --
 #> Posterior mean:
-#>   ID_1  ID_10   ID_2   ID_3   ID_4   ID_5   ID_6   ID_7   ID_8   ID_9 
-#> 25.401 24.406 25.633 24.114 23.551 24.798 25.055 24.908 25.574 24.904 
+#>   ID_1   ID_2   ID_3   ID_4   ID_5   ID_6 
+#> 23.860 24.735 24.539 24.271 24.483 24.158 
 #> Posterior covariance:
-#>        ID_1 ID_10  ID_2  ID_3  ID_4  ID_5  ID_6  ID_7  ID_8  ID_9
-#> ID_1  2.224 1.575 1.723 0.764 1.700 1.479 1.249 1.616 0.492 1.504
-#> ID_10 1.575 2.224 1.544 1.201 1.670 1.711 1.606 1.721 0.882 1.717
-#> ID_2  1.723 1.544 2.224 0.720 1.685 1.441 1.203 1.588 0.457 1.467
-#> ID_3  0.764 1.201 0.720 2.224 0.936 1.329 1.542 1.135 1.645 1.299
-#> ID_4  1.700 1.670 1.685 0.936 2.224 1.603 1.412 1.694 0.636 1.621
-#> ID_5  1.479 1.711 1.441 1.329 1.603 2.224 1.672 1.693 1.015 1.724
-#> ID_6  1.249 1.606 1.203 1.542 1.412 1.672 2.224 1.565 1.272 1.659
-#> ID_7  1.616 1.721 1.588 1.135 1.694 1.693 1.565 2.224 0.817 1.703
-#> ID_8  0.492 0.882 0.457 1.645 0.636 1.015 1.272 0.817 2.224 0.983
-#> ID_9  1.504 1.717 1.467 1.299 1.621 1.724 1.659 1.703 0.983 2.224
+#>       ID_1  ID_2  ID_3  ID_4  ID_5  ID_6
+#> ID_1 2.224 1.659 0.474 1.625 1.311 1.011
+#> ID_2 1.659 2.224 0.433 1.603 1.260 0.954
+#> ID_3 0.474 0.433 2.224 0.648 1.112 1.399
+#> ID_4 1.625 1.603 0.648 2.224 1.484 1.221
+#> ID_5 1.311 1.260 1.112 1.484 2.224 1.584
+#> ID_6 1.011 0.954 1.399 1.221 1.584 2.224
 #> 
-#> -- Group 2 (10 IDs) --
+#> -- Group 2 (6 IDs) --
 #> Posterior mean:
-#>   ID_1  ID_10   ID_2   ID_3   ID_4   ID_5   ID_6   ID_7   ID_8   ID_9 
-#> 24.756 24.018 23.944 24.942 24.095 25.204 25.346 23.415 25.451 25.214 
+#>   ID_1   ID_2   ID_3   ID_4   ID_5   ID_6 
+#> 27.133 25.827 26.887 26.098 25.874 27.387 
 #> Posterior covariance:
-#>        ID_1 ID_10  ID_2  ID_3  ID_4  ID_5  ID_6  ID_7  ID_8  ID_9
-#> ID_1  2.224 1.575 1.723 0.764 1.700 1.479 1.249 1.616 0.492 1.504
-#> ID_10 1.575 2.224 1.544 1.201 1.670 1.711 1.606 1.721 0.882 1.717
-#> ID_2  1.723 1.544 2.224 0.720 1.685 1.441 1.203 1.588 0.457 1.467
-#> ID_3  0.764 1.201 0.720 2.224 0.936 1.329 1.542 1.135 1.645 1.299
-#> ID_4  1.700 1.670 1.685 0.936 2.224 1.603 1.412 1.694 0.636 1.621
-#> ID_5  1.479 1.711 1.441 1.329 1.603 2.224 1.672 1.693 1.015 1.724
-#> ID_6  1.249 1.606 1.203 1.542 1.412 1.672 2.224 1.565 1.272 1.659
-#> ID_7  1.616 1.721 1.588 1.135 1.694 1.693 1.565 2.224 0.817 1.703
-#> ID_8  0.492 0.882 0.457 1.645 0.636 1.015 1.272 0.817 2.224 0.983
-#> ID_9  1.504 1.717 1.467 1.299 1.621 1.724 1.659 1.703 0.983 2.224
+#>       ID_1  ID_2  ID_3  ID_4  ID_5  ID_6
+#> ID_1 2.224 1.659 0.474 1.625 1.311 1.011
+#> ID_2 1.659 2.224 0.433 1.603 1.260 0.954
+#> ID_3 0.474 0.433 2.224 0.648 1.112 1.399
+#> ID_4 1.625 1.603 0.648 2.224 1.484 1.221
+#> ID_5 1.311 1.260 1.112 1.484 2.224 1.584
+#> ID_6 1.011 0.954 1.399 1.221 1.584 2.224
 ```
 
 Draw samples from the posteriors for plotting and the overlap
@@ -226,10 +218,16 @@ samples <- sample_posterior(posterior, n = 2000)
 
 ## Differential analysis
 
-[`calculate_group_overlaps()`](https://terenceviellard.github.io/BayesOmics/reference/calculate_group_overlaps.md)
-returns the pairwise Overlapping Coefficient (OVL) between every pair of
-groups. Groups with different sample sizes are fully supported - see
-[`vignette("sample_size_scenarios")`](https://terenceviellard.github.io/BayesOmics/articles/sample_size_scenarios.md)
+[`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md)
+compares every pair of groups with a sensible default metric, chosen
+automatically from the number of features being compared – no metric to
+pick by hand (see
+[`?group_diff`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md)
+if you want to choose one explicitly,
+e.g. `group_diff(posterior, wasserstein_metric())`). With 6 features
+here, it picks the pairwise Overlapping Coefficient (OVL). Groups with
+different sample sizes are fully supported - see
+[`vignette("07_unequal_sample_size")`](https://terenceviellard.github.io/BayesOmics/articles/07_unequal_sample_size.md)
 for a detailed exploration of how replicate counts affect posterior
 width and the resulting OVL. OVL = 1 means identical posteriors (no
 differential signal); OVL ~ 0 means fully separated profiles (strong
@@ -245,10 +243,12 @@ and $`\Phi`$ is the standard normal CDF.
 
 ``` r
 
-calculate_group_overlaps(posterior)
-#>           1         2
-#> 1 1.0000000 0.1217735
-#> 2 0.1217735 1.0000000
+group_diff(posterior)
+#> Metric: ovl_metric(n_mc = 2000) 
+#> 
+#>            1          2
+#> 1 1.00000000 0.09446298
+#> 2 0.09446298 1.00000000
 ```
 
 Overlapping coefficient can be seen as a single-number summary of the
@@ -270,20 +270,16 @@ that pair’s OVL, plus the posterior-mean panel already seen above:
 
 multi_diff <- compute_multi_diff(samples, results = posterior)
 multi_diff$Diff_proba
-#> # A tibble: 11 × 5
-#>    Group1 Group2 Nb_id  Proba Cumul_proba
-#>    <chr>  <chr>  <int>  <dbl>       <dbl>
-#>  1 1      2          0 0.077        0.077
-#>  2 1      2          1 0.089        0.166
-#>  3 1      2          2 0.086        0.252
-#>  4 1      2          3 0.0825       0.334
-#>  5 1      2          4 0.0925       0.427
-#>  6 1      2          5 0.0895       0.516
-#>  7 1      2          6 0.0795       0.596
-#>  8 1      2          7 0.088        0.684
-#>  9 1      2          8 0.0965       0.780
-#> 10 1      2          9 0.0965       0.877
-#> 11 1      2         10 0.123        1
+#> # A tibble: 7 × 5
+#>   Group1 Group2 Nb_id  Proba Cumul_proba
+#>   <chr>  <chr>  <int>  <dbl>       <dbl>
+#> 1 1      2          0 0.513        0.513
+#> 2 1      2          1 0.224        0.737
+#> 3 1      2          2 0.122        0.859
+#> 4 1      2          3 0.064        0.923
+#> 5 1      2          4 0.049        0.972
+#> 6 1      2          5 0.0225       0.994
+#> 7 1      2          6 0.0055       1
 ```
 
 ``` r
@@ -292,12 +288,12 @@ plot_multi_diff(multi_diff)
 ```
 
 ![Empirical distribution of the number of features where group 1's
-posterior draw exceeds group 2's, spread broadly across 0 to 10 features
+posterior draw exceeds group 2's, spread broadly across 0 to 6 features
 rather than spiked at either extreme, alongside the
 posterior-mean-per-feature
 panel](get-started_files/figure-html/unnamed-chunk-11-1.png)
 
-The bar-chart panel is spread broadly across 0 to 10 features, rather
+The bar-chart panel is spread broadly across 0 to 6 features, rather
 than spiked at either extreme – group 1 does not exceed group 2 on every
 feature, nor on none. This is consistent with a real, but partial and
 non-caricatural, differential signal: exactly the kind of nuance the
@@ -334,6 +330,9 @@ plot_posterior_overlap(samples,
 
 | Vignette | What you will find |
 |----|----|
-| [`vignette("omics-analysis")`](https://terenceviellard.github.io/BayesOmics/articles/omics-analysis.md) | Full worked examples - realistic biological context, kernel composition (SE + Noise), HP interpretation, two-group and four-group dose-response designs, and every plot function. |
-| [`vignette("sample_size_scenarios")`](https://terenceviellard.github.io/BayesOmics/articles/sample_size_scenarios.md) | How unbalanced designs affect posterior width and the OVL, and why the comparison remains valid with strongly unequal sample sizes. |
-| [`vignette("troubleshooting")`](https://terenceviellard.github.io/BayesOmics/articles/troubleshooting.md) | Exact error messages you may encounter, what causes each of them, and the targeted fix. |
+| [`vignette("01_basic_pipeline")`](https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.md) | The complete two-group walkthrough - kernel choice, hyperparameter fitting, posterior computation, [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md). |
+| [`vignette("04_multi_group")`](https://terenceviellard.github.io/BayesOmics/articles/04_multi_group.md) | Reading a [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md) matrix and [`plot_multi_diff()`](https://terenceviellard.github.io/BayesOmics/reference/plot_multi_diff.md) output for more than two groups (e.g. a dose-response design). |
+| [`vignette("05_metric_choice")`](https://terenceviellard.github.io/BayesOmics/articles/05_metric_choice.md) | Why the joint OVL saturates as the number of features grows, and when to prefer per-feature Wasserstein instead. |
+| [`vignette("07_unequal_sample_size")`](https://terenceviellard.github.io/BayesOmics/articles/07_unequal_sample_size.md) | How unbalanced designs affect posterior width and the OVL, and why the comparison remains valid with strongly unequal sample sizes. |
+| [`vignette("10_real_data")`](https://terenceviellard.github.io/BayesOmics/articles/10_real_data.md) | Reshaping a real dataset (not a simulation) into the BayesOmics long format. |
+| [`vignette("troubleshooting")`](https://terenceviellard.github.io/BayesOmics/articles/troubleshooting.md) | Exact error messages you may encounter, what causes each of them, and the targeted fix - with a full index of every analysis vignette. |
