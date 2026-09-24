@@ -4,15 +4,33 @@
 \alias{ovl_metric}
 \title{Gaussian Overlapping Coefficient (OVL) Metric}
 \usage{
-ovl_metric()
+ovl_metric(n_mc = 2000)
+}
+\arguments{
+\item{n_mc}{Number of Monte Carlo draws used by the KDE fallback (see
+above); irrelevant (unused) whenever the two groups share a
+\code{kernel_key}, since the exact formula applies then. Defaults to
+\code{2000}.}
 }
 \value{
 A \code{distance_metric} object.
 }
 \description{
-The exact closed-form overlapping coefficient between two
-groups' posteriors, as used by \code{\link{calculate_group_overlaps}}.
-Requires the two groups to share the same \code{kernel_key} (so
-\eqn{\Sigma_2 = c\Sigma_1} for a scalar \eqn{c = \mathrm{scale}_1/\mathrm{scale}_2});
-there is no general fallback for this metric.
+The overlapping coefficient between two groups' posteriors,
+as used by \code{\link{calculate_group_overlaps}}. Same call in every
+case: when the two groups share the same \code{kernel_key} (so
+\eqn{\Sigma_2 = c\Sigma_1} for a scalar \eqn{c =
+  \mathrm{scale}_1/\mathrm{scale}_2}), the exact closed-form ratio is
+used. Otherwise (e.g. \code{pooled = FALSE}, or two groups fit with
+genuinely different kernels), there is no closed form -- the
+log-likelihood-ratio boundary between the two Gaussians then has a
+different weight per axis, not reducible to one (noncentral)
+chi-squared variable -- so a Monte Carlo/KDE estimate is used
+automatically instead (\code{.ovl_mc_fallback()}): \code{n_mc} draws
+simulated directly from each group's \eqn{N(\mu,\Sigma)}, then the
+two-sample identity \eqn{OVL = E_{f_1}[\min(1, f_2/f_1)] = E_{f_2}[\min(1,
+  f_1/f_2)]} with \eqn{f_1}/\eqn{f_2} estimated by a diagonal Gaussian KDE.
+Noisier and increasingly unreliable as the number of shared IDs grows
+(the curse of dimensionality for KDE) -- only reached when the exact
+formula does not apply, so it never affects the pooled case.
 }

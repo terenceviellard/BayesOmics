@@ -1,0 +1,101 @@
+---
+title: "Comparing groups with different sample sizes"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Comparing groups with different sample sizes}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6, fig.height = 4)
+```
+
+```{r setup, message = FALSE, warning = FALSE}
+library(keRnel)
+library(BayesOmics)
+library(ggplot2)
+```
+
+One condition is cheap to sample, the other is rare or expensive -- the two
+groups end up with very different replicate counts. This is fully
+supported: a group's posterior scale is `n_obs + lambda_0`, using only
+*that group's own* replicate count. The only real requirement is that both
+groups share the same `Input` positions (so they share the same kernel
+matrix and can be compared at all) -- nothing requires the same `N`.
+
+## Simulate an unbalanced design
+
+3 replicates for `Rare`, 15 for `Abundant`:
+
+```{r}
+set.seed(7)
+kern_true <- variance_kernel(variance = 10) * se_kernel(length_scale = 80)
+data <- simu_db_kernel(
+  kernel        = kern_true,
+  nb_id         = 6,
+  nb_group      = 2,
+  nb_sample     = c(3, 15),
+  diff_group    = 0.8,
+  var_sample    = 5,
+  range_input   = c(0, 200),
+  group_labels  = c("Rare", "Abundant"),
+  integer_input = TRUE,
+  input_grid    = TRUE
+)
+ggplot(data, aes(Input, Output, color = Group, group = interaction(Group, Sample))) +
+  geom_line(alpha = 0.4) +
+  geom_point(size = 1)
+```
+
+`Rare` has visibly fewer lines than `Abundant` -- the asymmetry the rest of
+this example works through.
+
+## Fit and compare, as usual
+
+```{r}
+kern <- variance_kernel(variance = 1) * se_kernel(length_scale = 50) +
+  white_noise_kernel(noise = 1)
+g1         <- data[data$Group == "Rare", ]
+prior_mean <- mean(g1$Output)
+hp_opt     <- fit_kernel(kern, g1, prior_mean = prior_mean, prior_cov = 1)
+kern_opt   <- kupdate(kern,
+                       variance     = hp_opt[["variance"]],
+                       length_scale = hp_opt[["length_scale"]],
+                       noise        = hp_opt[["noise"]])
+posterior  <- posterior_mean(data, kern_opt, mu_0 = prior_mean, lambda_0 = 1)
+```
+
+Each group's own scale reflects its own sample size:
+
+```{r}
+c(Rare = posterior$groups$Rare$scale, Abundant = posterior$groups$Abundant$scale)
+group_diff(posterior)
+```
+
+`Rare` has scale `4` (`3 + lambda_0`), `Abundant` has scale `16`
+(`15 + lambda_0`) -- `Rare`'s posterior is proportionally wider, and the OVL
+above already accounts for that difference correctly.
+
+## Visualize the width difference
+
+```{r}
+samples <- sample_posterior(posterior, n = 2000)
+plot_posterior_overlap(samples, group1 = "Rare", group2 = "Abundant",
+                        id = unique(samples$ID)[1])
+```
+
+`Rare`'s density is visibly wider than `Abundant`'s -- fewer replicates,
+less certainty about the mean -- even though both are centered where the
+simulated effect places them.
+
+## Takeaways
+
+- Unequal `nb_sample` across groups needs no special handling: fit and
+  compare exactly as in the balanced case.
+- What *is* required is that both groups are measured at the same `Input`
+  positions -- not the same replicate count.
+
+## Related
+
+*Basic pipeline* -- *Comparing more than two groups*.
