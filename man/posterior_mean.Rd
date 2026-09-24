@@ -28,16 +28,22 @@ is ambiguous and errors instead. Supply both 'ID' and 'Input' (plus
 case.}
 
 \item{kern}{A kernel object (from the keRnel package) used to compute
-pairwise covariances. Defaults to \code{NULL}, in which case a diagonal
+pairwise covariances, or a named list of kernel objects (one entry per
+group in \code{data}, e.g. from \code{\link{fit_kernel}(..., group_col =
+"Group", pooled = FALSE)}) to give each group its own, independently
+fitted kernel -- every group then gets its own \code{kernel_key}, so
+metrics with \code{requires_shared_kernel() == TRUE} (e.g.
+\code{\link{ovl_metric}}) cannot compare them (same caveat as
+\code{pooled = FALSE} below). Defaults to \code{NULL}, in which case a diagonal
 (\code{keRnel::white_noise_kernel()}) kernel is built automatically from a
 closed-form residual-variance estimate -- the exact REML minimizer
-\code{optim_hp(..., group_col = "Group")} would converge to numerically,
+\code{fit_kernel(..., group_col = "Group")} would converge to numerically,
 computed directly instead (see \code{resolve_closed_form_kernel()} in
 \code{R/optim_kernel.R} and \code{dev/univariate/NOTES_univariate.md} for
 the derivation). This is the natural default in univariate mode, but also
 works with a real 'ID'/'Input' design (every feature is then treated as
 independent -- no spatial structure -- unlike a real kernel fit via
-\code{optim_hp()}, which must be supplied explicitly via \code{kern} for
+\code{fit_kernel()}, which must be supplied explicitly via \code{kern} for
 that).}
 
 \item{mu_0}{Prior mean parameter.}
@@ -46,7 +52,7 @@ that).}
 
 \item{obs_noise}{Fixed, known observation-noise variance to add back into
 the posterior covariance (see \code{get_sigmak()}'s \verb{@details}). Needed
-whenever \code{kern}'s hyperparameters were fit with \code{optim_hp(..., prior_cov = )} treating that same value as a separate additive nugget rather than
+whenever \code{kern}'s hyperparameters were fit with \code{fit_kernel(..., prior_cov = )} treating that same value as a separate additive nugget rather than
 composing it into \code{kern} itself (e.g. via a \code{NoiseKernel()} term) --
 otherwise the reported credible interval only reflects uncertainty about
 whatever correlated structure the kernel captures BEYOND that fixed

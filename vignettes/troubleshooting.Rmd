@@ -29,7 +29,7 @@ matches exactly what you would see in your own console.
 ```{r, warning = TRUE}
 data <- simu_db(nb_id = 20)
 kern <- variance_kernel(variance = 0.01) * se_kernel(length_scale = 0.01)
-opt  <- optim_hp(kern, data, prior_mean = 0, prior_cov = 1, max_iter = 1)
+opt  <- fit_kernel(kern, data, prior_mean = 0, prior_cov = 1, max_iter = 1)
 ```
 
 **Cause:** L-BFGS-B stopped before satisfying its convergence criterion -- usually

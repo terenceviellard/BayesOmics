@@ -16,7 +16,7 @@ format_input_key <- function(x) sprintf("%.17g", x)
 #' @details `group_entry$obs_noise` (added by `posterior_mean()`, default
 #'   0) is a fixed, known observation-noise variance to add back to the
 #'   kernel-derived covariance before dividing by `scale`. It exists because
-#'   HP-fitting workflows built around `optim_hp(..., prior_cov = )` (see
+#'   HP-fitting workflows built around `fit_kernel(..., prior_cov = )` (see
 #'   `R/optim_kernel.R`'s `resolve_prior_cov()`) add `prior_cov` as a SEPARATE
 #'   additive nugget to the likelihood, so the fitted kernel's own HPs (e.g.
 #'   `variance`) only capture whatever correlated structure remains BEYOND
@@ -70,16 +70,22 @@ get_sigmak <- function(group_entry, kernels) {
 #'   'Input_ID' for a multi-dimensional Input) for the general multi-feature
 #'   case.
 #' @param kern A kernel object (from the keRnel package) used to compute
-#'   pairwise covariances. Defaults to \code{NULL}, in which case a diagonal
+#'   pairwise covariances, or a named list of kernel objects (one entry per
+#'   group in \code{data}, e.g. from \code{\link{fit_kernel}(..., group_col =
+#'   "Group", pooled = FALSE)}) to give each group its own, independently
+#'   fitted kernel -- every group then gets its own \code{kernel_key}, so
+#'   metrics with \code{requires_shared_kernel() == TRUE} (e.g.
+#'   \code{\link{ovl_metric}}) cannot compare them (same caveat as
+#'   \code{pooled = FALSE} below). Defaults to \code{NULL}, in which case a diagonal
 #'   (\code{keRnel::white_noise_kernel()}) kernel is built automatically from a
 #'   closed-form residual-variance estimate -- the exact REML minimizer
-#'   \code{optim_hp(..., group_col = "Group")} would converge to numerically,
+#'   \code{fit_kernel(..., group_col = "Group")} would converge to numerically,
 #'   computed directly instead (see \code{resolve_closed_form_kernel()} in
 #'   \code{R/optim_kernel.R} and \code{dev/univariate/NOTES_univariate.md} for
 #'   the derivation). This is the natural default in univariate mode, but also
 #'   works with a real 'ID'/'Input' design (every feature is then treated as
 #'   independent -- no spatial structure -- unlike a real kernel fit via
-#'   \code{optim_hp()}, which must be supplied explicitly via \code{kern} for
+#'   \code{fit_kernel()}, which must be supplied explicitly via \code{kern} for
 #'   that).
 #' @param pooled Only used when \code{kern = NULL}. If \code{TRUE} (default), a
 #'   single noise variance is estimated and shared by every group (more
@@ -101,7 +107,7 @@ get_sigmak <- function(group_entry, kernels) {
 #' @param lambda_0 Prior precision parameter.
 #' @param obs_noise Fixed, known observation-noise variance to add back into
 #'   the posterior covariance (see `get_sigmak()`'s `@details`). Needed
-#'   whenever `kern`'s hyperparameters were fit with `optim_hp(..., prior_cov
+#'   whenever `kern`'s hyperparameters were fit with `fit_kernel(..., prior_cov
 #'   = )` treating that same value as a separate additive nugget rather than
 #'   composing it into `kern` itself (e.g. via a `NoiseKernel()` term) --
 #'   otherwise the reported credible interval only reflects uncertainty about
@@ -161,34 +167,10 @@ posterior_mean <- function(data, kern = NULL, mu_0 = 1, lambda_0 = 1, obs_noise 
   }
 
   # === Univariate mode: no 'ID'/'Input' -> one feature per group ===
-  # A single feature has nothing to correlate against, so there is no need
-  # for a real spatial kernel -- see dev/univariate/NOTES_univariate.md. The
-  # dummy ID/Input columns just let the rest of this function (and every
-  # downstream consumer keyed by ID, e.g. compute_group_diff()) run
-  # unmodified: with one distinct ID/Input per group, the kernel matrix built
-  # below is already a literal 1x1 matrix, not a slice of a larger one
-  # (verified in dev/univariate/01_closed_form_check.R). Only triggered when
-  # BOTH columns are absent: supplying just one of the two is ambiguous (e.g.
-  # a real, multi-valued 'Input' with no 'ID' would otherwise get every one of
-  # its distinct positions collapsed onto a single dummy ID) rather than
-  # silently guessing, so that case errors instead.
-  has_id    <- "ID" %in% names(data)
-  has_input <- "Input" %in% names(data)
-  if (!has_id && !has_input) {
-    warning(
-      "posterior_mean(): no 'ID'/'Input' columns found in 'data' -- running in ",
-      "univariate mode (each group treated as a single feature, no cross-feature ",
-      "correlation structure)."
-    )
-    data$ID    <- "1"
-    data$Input <- 0
-  } else if (has_id != has_input) {
-    stop(
-      "posterior_mean(): 'data' has one of 'ID'/'Input' but not the other -- ",
-      "either supply both (the general multi-feature case) or neither ",
-      "(univariate mode: one feature per group, both added automatically)."
-    )
-  }
+  # Shared with fit_kernel()'s kern = NULL branch (inject_univariate_dummy_cols(),
+  # see R/optim_kernel.R) so both switch into univariate mode under the exact
+  # same condition, with the exact same warning/error text.
+  data <- inject_univariate_dummy_cols(data, "posterior_mean")
 
   data <- normalize_input_cols(data)
   if (!is.numeric(data$Input) || !is.numeric(data$Output) || !is.numeric(mu_0)) {
@@ -203,8 +185,23 @@ posterior_mean <- function(data, kern = NULL, mu_0 = 1, lambda_0 = 1, obs_noise 
   if (any(is.na(data$Group)) || any(is.na(data$ID))) {
     stop("The 'Group' and 'ID' columns must not contain NA values.")
   }
-  if (!is.null(kern) && !inherits(kern, "kernel")) {
-    stop("The 'kern' argument must be a valid kernel object from the keRnel package.")
+  # A named list of kernel objects (one per group, e.g. from
+  # fit_kernel(..., group_col = "Group", pooled = FALSE)) is accepted here
+  # too, in addition to a single shared kernel object -- mirroring the shape
+  # resolve_closed_form_kernel(pooled = FALSE) already produces internally
+  # for the kern = NULL path. kern_is_shared below then dispatches per group.
+  kern_is_list <- is.list(kern) && !inherits(kern, "kernel") && length(kern) > 0 &&
+    all(vapply(kern, inherits, logical(1), "kernel"))
+  if (!is.null(kern) && !inherits(kern, "kernel") && !kern_is_list) {
+    stop("The 'kern' argument must be a valid kernel object from the keRnel package, ",
+         "or a named list of kernel objects (one per group).")
+  }
+  if (kern_is_list) {
+    missing_groups <- setdiff(unique(as.character(data$Group)), names(kern))
+    if (length(missing_groups) > 0) {
+      stop("'kern' is a named list but is missing an entry for group(s): ",
+           paste(missing_groups, collapse = ", "))
+    }
   }
 
   # === Convert Group to character if necessary ===
@@ -522,7 +519,7 @@ sample_posterior <- function(results, n) {
 ## ===========================================================================
 ## Block wrapper -- split one BayesOmics problem into several independent,
 ## smaller ones (one per block, or per (Group, block)), each solved by the
-## UNCHANGED posterior_mean()/optim_hp() pipeline above, then consulted as if
+## UNCHANGED posterior_mean()/fit_kernel() pipeline above, then consulted as if
 ## the result were a single block-diagonal covariance. See
 ## dev/block_wrapper_demo/README.md for the full design discussion; this is
 ## the "Option B" integration into R/ decided there.
@@ -732,7 +729,7 @@ partition_diagonal <- function(ids) partition_by_id(stats::setNames(ids, ids))
 #'
 #' @description
 #' Splits \code{data} according to \code{partition}, then calls the unchanged
-#' \code{\link{posterior_mean}}/\code{\link{optim_hp}} pipeline independently
+#' \code{\link{posterior_mean}}/\code{\link{fit_kernel}} pipeline independently
 #' per sub-problem (per block, or per \code{(Group, block)} when
 #' \code{pooled = FALSE}), collecting the results into a list consultable via
 #' \code{\link{get_sigmak_block}}/\code{\link{get_muk_block}}. No result
@@ -753,20 +750,22 @@ partition_diagonal <- function(ids) partition_by_id(stats::setNames(ids, ids))
 #'   \code{\link{partition_from_annotation}}, \code{\link{partition_diagonal}}),
 #'   or \code{NULL} / \code{\link{partition_dense}()} for a single block.
 #' @param kern \code{NULL} (closed form, as in \code{posterior_mean()}), or an
-#'   UNFITTED kernel object (template) -- in that case \code{optim_hp()} is
+#'   UNFITTED kernel object (template) -- in that case \code{fit_kernel()} is
 #'   called once per sub-problem before building its posterior (mirroring how
 #'   \code{posterior_mean()} never fits \code{kern} itself when it is
 #'   supplied, see \code{R/optim_kernel.R}).
 #' @param pooled A single parameter threaded to both branches: when
 #'   \code{kern = NULL}, passed straight through to
 #'   \code{posterior_mean(kern = NULL, pooled = pooled)}; when \code{kern} is
-#'   an unfitted template, \code{TRUE} fits one \code{optim_hp(group_col =
+#'   an unfitted template, \code{TRUE} fits one \code{fit_kernel(group_col =
 #'   "Group")} shared across every Group within a block, \code{FALSE} fits an
-#'   independent \code{optim_hp()} per \code{(Group, block)}. Defaults to
-#'   \code{TRUE}, matching \code{posterior_mean()}'s own default.
+#'   independent \code{fit_kernel()} per \code{(Group, block)}. Defaults to
+#'   \code{TRUE}, matching \code{posterior_mean()}'s own default. See also
+#'   \code{\link{fit_kernel}}'s own \code{pooled} argument for the same
+#'   pooled/non-pooled choice without the block-partitioning machinery.
 #' @param mu_0,lambda_0,obs_noise,df_warn Forwarded to \code{posterior_mean()}
 #'   on every sub-problem; see its documentation.
-#' @param prior_mean,prior_cov,pen_diag Forwarded to \code{optim_hp()} when
+#' @param prior_mean,prior_cov,pen_diag Forwarded to \code{fit_kernel()} when
 #'   \code{kern} is an unfitted template; see its documentation.
 #' @return A \code{block_posterior_fit} object: a list with
 #'   \code{block_results} (named list of per-sub-problem
@@ -817,9 +816,9 @@ fit_block_posterior <- function(data, partition, kern = NULL, pooled = TRUE,
       posterior_mean(sub, kern = NULL, mu_0 = mu_0, lambda_0 = lambda_0,
                       obs_noise = obs_noise, pooled = pooled, df_warn = df_warn)
     } else {
-      opt <- optim_hp(kern, sub, prior_mean = if (is.null(group_col)) prior_mean else NULL,
-                       prior_cov = prior_cov, pen_diag = pen_diag, verbose = TRUE,
-                       group_col = group_col)
+      opt <- fit_kernel(kern, sub, prior_mean = if (is.null(group_col)) prior_mean else NULL,
+                        prior_cov = prior_cov, pen_diag = pen_diag, verbose = TRUE,
+                        group_col = group_col)
       res <- posterior_mean(sub, kern = opt$kern, mu_0 = mu_0, lambda_0 = lambda_0, obs_noise = obs_noise)
       ## posterior_mean()$kernels stores the CACHED kernel matrix, not the
       ## fitted kernel object -- kept as a separate attribute so callers can

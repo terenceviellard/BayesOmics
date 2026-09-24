@@ -1,11 +1,11 @@
-# Full pipeline: simu_db -> optim_hp -> posterior_mean -> sample_posterior
+# Full pipeline: simu_db -> fit_kernel -> posterior_mean -> sample_posterior
 #               -> plot_distrib
 
 test_that("full pipeline runs without error", {
   set.seed(1)
   data <- simu_db(nb_id = 5, nb_group = 2, nb_sample = 3)
   kern <- make_kernel()
-  hp   <- optim_hp(kern, data[data$Group == 1, ], 0, 1)
+  hp   <- fit_kernel(kern, data[data$Group == 1, ], 0, 1)
   kern <- do.call(keRnel::kupdate, c(list(kern), as.list(hp)))
   res  <- posterior_mean(data, kern)
   long <- sample_posterior(res, 200)
@@ -65,7 +65,7 @@ test_that("optimized hyperparameters improve posterior fit", {
   data <- simu_db(nb_id = 20, nb_group = 2, nb_sample = 1)
   kern0 <- make_kernel(hp = c(0.1, 0.1))
   kern_opt <- make_kernel()
-  hp   <- optim_hp(kern_opt, data[data$Group == 1, ], 0, 1)
+  hp   <- fit_kernel(kern_opt, data[data$Group == 1, ], 0, 1)
   kern_opt <- do.call(keRnel::kupdate, c(list(kern_opt), as.list(hp)))
 
   res0   <- posterior_mean(data, kern0)

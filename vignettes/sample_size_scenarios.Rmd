@@ -104,7 +104,7 @@ ker <- se_part + noise_part
 
 control_calib  <- data_base[data_base$Group == "Control", ]
 prior_mean_est <- mean(control_calib$Output)
-hp_opt  <- BayesOmics::optim_hp(ker, control_calib, prior_mean = prior_mean_est, prior_cov = 1)
+hp_opt  <- BayesOmics::fit_kernel(ker, control_calib, prior_mean = prior_mean_est, prior_cov = 1)
 ker_opt <- do.call(kupdate, c(list(ker), as.list(hp_opt)))
 hp_opt
 ```

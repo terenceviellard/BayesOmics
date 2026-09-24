@@ -25,6 +25,19 @@ test_that("posterior_mean errors on non-kernel argument", {
   expect_error(posterior_mean(data, list()), "keRnel")
 })
 
+test_that("posterior_mean accepts a named list of kernels (one per group), giving each its own kernel_key", {
+  data <- make_data(nb_id = 5, nb_group = 2, nb_sample = 3)
+  kern_by_group <- list("1" = make_kernel(c(1, 1)), "2" = make_kernel(c(3, 3)))
+  posterior <- posterior_mean(data, kern = kern_by_group)
+  expect_false(posterior$groups[["1"]]$kernel_key == posterior$groups[["2"]]$kernel_key)
+})
+
+test_that("posterior_mean errors when the named-list kern is missing an entry for a group in data", {
+  data <- make_data(nb_id = 5, nb_group = 2, nb_sample = 3)
+  kern_by_group <- list("1" = make_kernel())
+  expect_error(posterior_mean(data, kern = kern_by_group), "missing an entry")
+})
+
 test_that("posterior_mean errors when lambda_0 <= 0", {
   data <- make_data()
   kern <- make_kernel()
