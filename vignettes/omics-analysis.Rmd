@@ -42,7 +42,7 @@ The pipeline has five stages:
 
 1. **Load (or, here, simulate) data**  -  a long-format data frame with columns
    `ID`, `Group`, `Sample`, `Input`, `Output` (see "Data structure" below).
-2. **Optimize kernel hyperparameters** (`optim_hp()`)  -  fit the
+2. **Optimize kernel hyperparameters** (`fit_kernel()`)  -  fit the
    kernel to the data by maximum likelihood, learning how far the
    correlation between features extends along `Input`.
 3. **Compute posteriors** (`posterior_mean()`)  -  one posterior profile
@@ -105,7 +105,7 @@ head(data)
 Combine an SE kernel with a `NoiseKernel` nugget, and fit all three
 hyperparameters by maximum likelihood on the Control group. To keep the kernel
 matrix well-conditioned, we average the replicates per feature first and pass
-one aggregate value per feature to `optim_hp()`, rather than all raw replicate
+one aggregate value per feature to `fit_kernel()`, rather than all raw replicate
 rows:
 
 ```{r}
@@ -114,7 +114,7 @@ noise_part <- white_noise_kernel(noise = 1)
 ker <- se_part + noise_part
 
 prior_mean <- mean(data$Output)
-hp_opt  <- optim_hp(ker, data, prior_mean = prior_mean, prior_cov = 1e-6)
+hp_opt  <- fit_kernel(ker, data, prior_mean = prior_mean, prior_cov = 1e-6)
 ker_opt <- do.call(kupdate, c(list(ker), as.list(hp_opt)))
 hp_opt
 ```
@@ -237,7 +237,7 @@ noise_part4 <- white_noise_kernel(noise = 1)
 ker4 <- se_part4 + noise_part4
 
 prior_mean4 <- mean(data4$Output)
-hp_opt4  <- optim_hp(ker4, data4, prior_mean = prior_mean4, prior_cov = 1e-6)
+hp_opt4  <- fit_kernel(ker4, data4, prior_mean = prior_mean4, prior_cov = 1e-6)
 ker_opt4 <- do.call(kupdate, c(list(ker4), as.list(hp_opt4)))
 hp_opt4
 ```
@@ -312,6 +312,6 @@ all_pairs[["G1_vs_G3"]]
 
 `?simu_db_kernel` documents all parameters, including `mu_random` (draw the
 baseline from the conjugate prior) and `lambda_0` (prior precision for
-coverage validation). `?optim_hp` documents the optimizer's full argument
+coverage validation). `?fit_kernel` documents the optimizer's full argument
 list. `?keRnel::sum_kernel` (and `+`/`*` on `kernel` objects) documents
 how to combine kernels.

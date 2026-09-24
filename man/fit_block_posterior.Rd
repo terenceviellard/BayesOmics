@@ -27,7 +27,7 @@ fit_block_posterior(
 or \code{NULL} / \code{\link{partition_dense}()} for a single block.}
 
 \item{kern}{\code{NULL} (closed form, as in \code{posterior_mean()}), or an
-UNFITTED kernel object (template) -- in that case \code{optim_hp()} is
+UNFITTED kernel object (template) -- in that case \code{fit_kernel()} is
 called once per sub-problem before building its posterior (mirroring how
 \code{posterior_mean()} never fits \code{kern} itself when it is
 supplied, see \code{R/optim_kernel.R}).}
@@ -35,15 +35,17 @@ supplied, see \code{R/optim_kernel.R}).}
 \item{pooled}{A single parameter threaded to both branches: when
 \code{kern = NULL}, passed straight through to
 \code{posterior_mean(kern = NULL, pooled = pooled)}; when \code{kern} is
-an unfitted template, \code{TRUE} fits one \code{optim_hp(group_col =
+an unfitted template, \code{TRUE} fits one \code{fit_kernel(group_col =
 "Group")} shared across every Group within a block, \code{FALSE} fits an
-independent \code{optim_hp()} per \code{(Group, block)}. Defaults to
-\code{TRUE}, matching \code{posterior_mean()}'s own default.}
+independent \code{fit_kernel()} per \code{(Group, block)}. Defaults to
+\code{TRUE}, matching \code{posterior_mean()}'s own default. See also
+\code{\link{fit_kernel}}'s own \code{pooled} argument for the same
+pooled/non-pooled choice without the block-partitioning machinery.}
 
 \item{mu_0, lambda_0, obs_noise, df_warn}{Forwarded to \code{posterior_mean()}
 on every sub-problem; see its documentation.}
 
-\item{prior_mean, prior_cov, pen_diag}{Forwarded to \code{optim_hp()} when
+\item{prior_mean, prior_cov, pen_diag}{Forwarded to \code{fit_kernel()} when
 \code{kern} is an unfitted template; see its documentation.}
 }
 \value{
@@ -56,7 +58,7 @@ natural-sort order), and \code{pooled}.
 }
 \description{
 Splits \code{data} according to \code{partition}, then calls the unchanged
-\code{\link{posterior_mean}}/\code{\link{optim_hp}} pipeline independently
+\code{\link{posterior_mean}}/\code{\link{fit_kernel}} pipeline independently
 per sub-problem (per block, or per \code{(Group, block)} when
 \code{pooled = FALSE}), collecting the results into a list consultable via
 \code{\link{get_sigmak_block}}/\code{\link{get_muk_block}}. No result

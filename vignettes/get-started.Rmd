@@ -113,14 +113,14 @@ Using an SE + Noise kernel for optimization separates the spatial signal
 
 ## Optimizing hyperparameters
 
-`optim_hp()` fits all hyperparameters by maximizing the marginal likelihood of
+`fit_kernel()` fits all hyperparameters by maximizing the marginal likelihood of
 the output values.
 
 ```{r}
 groupe1=data[data$Group == unique(data$Group)[1], ]
 prior_mean   <- mean(groupe1$Output)
 
-hp_opt <- optim_hp(kern, groupe1, prior_mean = prior_mean, prior_cov = 1)
+hp_opt <- fit_kernel(kern, groupe1, prior_mean = prior_mean, prior_cov = 1)
 hp_opt
 ```
 
