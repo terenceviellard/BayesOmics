@@ -428,24 +428,28 @@ test_that("plot_multi_diff returns a grid for exactly two groups", {
   expect_true(inherits(res, "gtable") || inherits(res, "grob"))
 })
 
-test_that("plot_multi_diff returns a grid for more than two groups", {
+test_that("plot_multi_diff returns an invisible list (heatmap + pairs [+ mean]) for more than two groups", {
   multi_diff <- make_multi_diff(nb_id = 3, nb_group = 4, n = 50)
   res <- plot_multi_diff(multi_diff)
-  expect_true(inherits(res, "gtable") || inherits(res, "grob"))
+  expect_true(is.list(res))
+  expect_true(inherits(res$heatmap, "ggplot"))
+  expect_true(is.list(res$pairs))
+  expect_true(inherits(res$mean, "ggplot"))
 })
 
-test_that("plot_multi_diff: panel count is choose(n_groups, 2) + 1 when plot_mean = TRUE", {
+test_that("plot_multi_diff: pairs list has choose(n_groups, 2) named entries, one ggplot per pair", {
   multi_diff <- make_multi_diff(nb_id = 3, nb_group = 4, n = 50)
   res <- plot_multi_diff(multi_diff, plot_mean = TRUE)
-  n_panels <- sum(!vapply(res$grobs, is.null, logical(1)))
-  expect_equal(n_panels, choose(4, 2) + 1)
+  expect_equal(length(res$pairs), choose(4, 2))
+  expect_true(all(vapply(res$pairs, inherits, logical(1), "ggplot")))
+  expect_true(all(grepl("_vs_", names(res$pairs))))
 })
 
-test_that("plot_multi_diff: panel count is choose(n_groups, 2) when plot_mean = FALSE", {
+test_that("plot_multi_diff: no 'mean' element when plot_mean = FALSE (>2 groups)", {
   multi_diff <- make_multi_diff(nb_id = 3, nb_group = 4, n = 50)
   res <- plot_multi_diff(multi_diff, plot_mean = FALSE)
-  n_panels <- sum(!vapply(res$grobs, is.null, logical(1)))
-  expect_equal(n_panels, choose(4, 2))
+  expect_equal(length(res$pairs), choose(4, 2))
+  expect_null(res$mean)
 })
 
 test_that("plot_multi_diff: panel count for exactly two groups (special-cased layout)", {
@@ -458,6 +462,47 @@ test_that("plot_multi_diff: panel count for exactly two groups (special-cased la
 test_that("plot_multi_diff: cumulative = TRUE does not error", {
   multi_diff <- make_multi_diff(nb_id = 3, nb_group = 3, n = 50)
   expect_no_error(plot_multi_diff(multi_diff, cumulative = TRUE))
+})
+
+# -- build_multi_diff_heatmap: overview tiles -----------------------------------
+
+test_that("build_multi_diff_heatmap uses the exact Overlap_coef when available", {
+  multi_diff <- make_multi_diff(nb_id = 3, nb_group = 4, n = 50)
+  list_groups <- sort(unique(c(multi_diff$Diff_proba$Group1, multi_diff$Diff_proba$Group2)))
+  gg <- BayesOmics:::build_multi_diff_heatmap(multi_diff, list_groups)
+  expect_true(inherits(gg, "ggplot"))
+  expect_true(grepl("^Pairwise overlap \\(OVL", gg$labels$title))
+  vals <- gg$data$Overlap
+  expect_true(all(vals >= 0 & vals <= 1))
+  # Diagonal (self) entries are exactly 1.
+  diag_vals <- gg$data$Overlap[gg$data$Group1 == gg$data$Group2]
+  expect_true(all(diag_vals == 1))
+})
+
+test_that("build_multi_diff_heatmap falls back to a Diff_proba-derived proxy without Overlap_coef", {
+  data      <- simu_db(nb_id = 4, nb_group = 4, nb_sample = 5, diff_group = 5)
+  kern      <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
+  posterior <- posterior_mean(data, kern)
+  samples   <- sample_posterior(posterior, n = 100)
+  multi_diff_no_overlap <- compute_multi_diff(samples)  # no 'results' -> no Overlap_coef
+  expect_null(multi_diff_no_overlap$Overlap_coef)
+
+  list_groups <- sort(unique(data$Group))
+  gg <- BayesOmics:::build_multi_diff_heatmap(multi_diff_no_overlap, list_groups)
+  expect_true(inherits(gg, "ggplot"))
+  expect_true(grepl("proxy", gg$labels$title))
+  expect_true(all(gg$data$Overlap >= 0 & gg$data$Overlap <= 1))
+})
+
+test_that("plot_multi_diff works (>2 groups) even without Overlap_coef in multi_diff", {
+  data      <- simu_db(nb_id = 4, nb_group = 3, nb_sample = 5, diff_group = 5)
+  kern      <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
+  posterior <- posterior_mean(data, kern)
+  samples   <- sample_posterior(posterior, n = 100)
+  multi_diff_no_overlap <- compute_multi_diff(samples)
+  res <- plot_multi_diff(multi_diff_no_overlap)
+  expect_true(inherits(res$heatmap, "ggplot"))
+  expect_equal(length(res$pairs), choose(3, 2))
 })
 
 # -- plot_multi_diff: end-to-end integration ------------------------------------

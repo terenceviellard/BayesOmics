@@ -54,29 +54,59 @@ validate_simu_db_args <- function(nb_id, nb_group, nb_sample, range_output,
 #' Several flexible arguments allow adjustment of the number of id, groups, and samples in each experiment.
 #' The values of several parameters controlling the data generation process can be modified.
 #'
-#' @param nb_id An integer, indicating the number of id in the data.
+#' @param nb_id An integer, indicating the number of id in the data. Ignored when
+#'   `univariate = TRUE` (forced to `1`); leave at its default (`NULL`, resolved to
+#'   `5` outside univariate mode and `1` inside it) unless overriding the multi-feature count.
 #' @param nb_group An integer, indicating the number of groups/conditions.
 #' @param nb_sample An integer, indicating the number of samples in the data for each id (i.e., the repetitions of the same experiment).
-#' @param nb_dim An integer, indicating the number of Input dimensions per id. Defaults to `1` (a single scalar Input per id, emitted with `Input_ID = 1`); `nb_dim > 1` emits one row per (Group, ID, Sample, Input_ID), `Output` repeated identically across the `nb_dim` rows of one observation.
+#' @param nb_dim An integer, indicating the number of Input dimensions per id. Defaults to `1` (a single scalar Input per id, emitted with `Input_ID = 1`); `nb_dim > 1` emits one row per (Group, ID, Sample, Input_ID), `Output` repeated identically across the `nb_dim` rows of one observation. Must stay `1` when `univariate = TRUE` (there is no Input axis to place in higher dimensions).
 #' @param range_output A 2-sized vector, indicating the range of values for output from which to pick a mean value for each id
-#' @param range_input A 2-sized vector, indicating the range of values for input from which to pick a mean value for each id (applied independently to every Input dimension)
+#' @param range_input A 2-sized vector, indicating the range of values for input from which to pick a mean value for each id (applied independently to every Input dimension). Ignored when `univariate = TRUE`.
 #' @param diff_group A number, indicating the mean difference between consecutive groups.
 #' @param var_sample A number, indicating the noise variance for each new sample of a id
+#' @param univariate Logical. If `TRUE`, simulate a single feature per group (no
+#'   feature/covariate axis) and return only `ID`, `Group`, `Sample`, `Output` -- the
+#'   format `posterior_mean()` requires for its univariate mode (see
+#'   `dev/70_documentation/drafts/02_univariate.Rmd`). Requires `nb_id = 1` (or left
+#'   at its default) and `nb_dim = 1` (or left at its default); `range_input` is unused.
+#'   Defaults to `FALSE`.
 #'
-#' @return A full dataset of synthetic data, with columns `ID`, `Group`, `Sample`, `Input_ID`, `Input`, `Output`.
+#' @return A full dataset of synthetic data. With `univariate = FALSE` (default),
+#'   columns `ID`, `Group`, `Sample`, `Input_ID`, `Input`, `Output`. With
+#'   `univariate = TRUE`, columns `Group`, `Sample`, `Output` only (no `ID`/`Input`)
+#'   -- ready to pass to `posterior_mean()` for its univariate mode.
 #' @export
 #'
 #' @examples
 #' data <- simu_db()
+#'
+#' # Univariate mode: a single feature per group, ready for posterior_mean()'s
+#' # univariate mode (no ID/Input columns needed there):
+#' data_uni <- simu_db(univariate = TRUE)
 simu_db <- function(
-    nb_id = 5,
+    nb_id = NULL,
     nb_group = 2,
     nb_sample = 5,
     nb_dim = 1,
     range_output = c(0, 50),
     range_input = c(0, 50),
     diff_group = 3,
-    var_sample = 2) {
+    var_sample = 2,
+    univariate = FALSE) {
+
+  if (!is.logical(univariate) || length(univariate) != 1 || is.na(univariate)) {
+    stop("'univariate' must be a single TRUE/FALSE value.")
+  }
+  if (is.null(nb_id)) {
+    nb_id <- if (univariate) 1 else 5
+  }
+  if (univariate && nb_id != 1) {
+    stop("'univariate = TRUE' requires 'nb_id = 1' (a single feature per group); ",
+         "leave 'nb_id' unset or set it to 1.")
+  }
+  if (univariate && nb_dim != 1) {
+    stop("'univariate = TRUE' has no Input axis; leave 'nb_dim' unset or set it to 1.")
+  }
 
   validate_simu_db_args(nb_id, nb_group, nb_sample, range_output, range_input,
                          diff_group, var_sample, var_sample_strictly_positive = FALSE)
@@ -98,6 +128,15 @@ simu_db <- function(
   obs$Output <- rep(base_output, each = nb_group * nb_sample) +
                diff_group * (obs$Group - 1) +  # Group 1 = reference (effect 0)
                rnorm(nrow(obs), 0, var_sample)
+
+  if (univariate) {
+    # Drop 'ID' (and there is no 'Input' to begin with): posterior_mean()'s
+    # univariate mode is triggered by the ABSENCE of both columns, not by
+    # nb_id == 1 alone -- see the "Univariate mode" section in compute_posterior.R.
+    db <- obs[, c("Group", "Sample", "Output")]
+    rownames(db) <- NULL
+    return(db)
+  }
 
   db <- do.call(rbind, lapply(seq_len(nb_dim), function(d) {
     cbind(obs, Input_ID = d, Input = rep(base_input[, d], each = nb_group * nb_sample))

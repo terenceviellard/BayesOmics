@@ -28,6 +28,6 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-Remotes:
-    terenceviellard/keRnel@new
 Config/roxygen2/version: 8.0.0
+Remotes:
+    terenceviellard/keRnel

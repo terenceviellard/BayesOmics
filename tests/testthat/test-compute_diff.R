@@ -290,12 +290,16 @@ test_that("calculate_group_overlaps does not warn below the default thresholds",
 
 # -- calculate_group_overlaps: different kernel_key (no shared raw Sigma) -----
 
-test_that("calculate_group_overlaps errors when groups don't share the same kernel_key", {
+test_that("calculate_group_overlaps falls back to a Monte Carlo estimate when groups don't share the same kernel_key", {
+  true_ovl <- integrate(function(x) pmin(dnorm(x, 0, 1), dnorm(x, 0, sqrt(2))), -20, 20)$value
   res <- make_custom_results(list(
     g1 = list(muk = c(ID_1 = 0), sigma = matrix(1, 1, 1)),
     g2 = list(muk = c(ID_1 = 0), sigma = matrix(2, 1, 1))
   ))
-  expect_error(calculate_group_overlaps(res), "kernel matrix|kernel_key")
+  set.seed(1)
+  ovl_hat <- calculate_group_overlaps(res)["g1", "g2"]
+  expect_true(ovl_hat >= 0 && ovl_hat <= 1)
+  expect_equal(ovl_hat, true_ovl, tolerance = 0.05)
 })
 
 # -- compute_multi_diff: input validation --------------------------------------

@@ -21,18 +21,36 @@ cumulative distribution (\code{TRUE}) or the probability mass (\code{FALSE},
 default) of the number of IDs where group1's posterior draw exceeds group2's.}
 }
 \value{
-The result of \code{gridExtra::grid.arrange}: a grid of panels, one
-per group pair, plus (if \code{plot_mean = TRUE}) the id-mean panel.
+With exactly two groups: the result of \code{gridExtra::grid.arrange}
+(the pair panel, plus the id-mean panel if \code{plot_mean = TRUE}).
+With more than two groups: invisibly, a list with \code{heatmap} (the
+overview \code{ggplot}, already displayed), \code{pairs} (a named list
+of \code{ggplot} objects, one per pair, named
+\code{"<group1>_vs_<group2>"}), and \code{mean} (the id-mean
+\code{ggplot}, only when \code{plot_mean = TRUE}; also already displayed).
 }
 \description{
-For every pair of groups present in \code{multi_diff}, plots the empirical
-distribution of the number of IDs for which group1's posterior draw exceeds
-group2's (see \code{\link{compute_multi_diff}}), arranged as an
-upper-triangular grid of panels via \code{gridExtra::grid.arrange} -- one
-panel per pair, with no cap on the number of groups (mirrors
-\code{\link{plot_distrib_each_pair}}'s equivalent no-cap behaviour). This
+For every pair of groups present in \code{multi_diff}, builds the
+empirical distribution of the number of IDs for which group1's posterior
+draw exceeds group2's (see \code{\link{compute_multi_diff}}). This
 complements \code{\link{plot_distrib}}'s per-id view with a region-wide,
 uncertainty-aware summary of whether two groups are differential.
+
+Behaviour depends on how many groups are involved:
+\itemize{
+\item \strong{exactly two groups}: the pair panel (plus the id-mean
+panel if \code{plot_mean = TRUE}), combined via
+\code{gridExtra::grid.arrange} -- unchanged from previous versions.
+\item \strong{more than two groups}: cramming every pair's panel into
+one upper-triangular grid stops being readable well before the panels
+stop fitting (a 4-group design already leaves 2 empty grid cells and
+shrinks 6 panels down to illegibility). Instead, an at-a-glance
+overview -- a heatmap with one tile per pair (plus the id-mean panel
+if requested) -- is displayed immediately, and the full,
+never-capped set of individual pair panels is returned invisibly for
+on-demand inspection (mirrors \code{\link{plot_distrib_each_pair}}'s
+no-cap philosophy), e.g. \code{plot_multi_diff(multi_diff)$pairs[["A_vs_B"]]}.
+}
 }
 \examples{
 data <- simu_db(nb_id = 8, nb_group = 3, nb_sample = 5, diff_group = 5)
@@ -40,5 +58,6 @@ kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale =
 posterior <- posterior_mean(data, kern)
 samples <- sample_posterior(posterior, n = 500)
 multi_diff <- compute_multi_diff(samples, results = posterior)
-plot_multi_diff(multi_diff)
+out <- plot_multi_diff(multi_diff)  # displays the heatmap + mean panel
+out$pairs[["1_vs_2"]]               # inspect one pair in full detail
 }

@@ -39,7 +39,7 @@ jitter_until_pd <- function(mat, pen_diag, transform, max_tries = 20,
 #'   building and inverting a kernel covariance matrix) keyed by exact equality
 #'   of `free` (the free/unconstrained hyperparameter vector) against the last
 #'   call. `cache` must be a single environment reused across calls (e.g. one
-#'   created per `optim_hp()` run); if `cache` is `NULL`, `compute()` is always
+#'   created per `fit_kernel()` run); if `cache` is `NULL`, `compute()` is always
 #'   called fresh (no memoization).
 cached_cov_inv <- function(cache, free, compute) {
   if (is.null(cache)) {
@@ -63,7 +63,7 @@ chol_inv_jitter <- function(mat, pen_diag, max_tries = 20, warn_ratio = 100) {
 #' @noRd
 #'
 #' @details Centers `output` on its own `(group, id)`-specific empirical mean
-#'   -- used by `optim_hp()`'s `group_col` argument to pool replicates from
+#'   -- used by `fit_kernel()`'s `group_col` argument to pool replicates from
 #'   multiple groups without an unmodeled between-group mean shift
 #'   contaminating the fitted kernel hyperparameters. Demeaning by `group`
 #'   alone (this function's previous behavior) only exactly cancels a
@@ -133,10 +133,47 @@ check_closed_form_df <- function(df, df_warn, label, pooled) {
 
 #' @noRd
 #'
+#' @details Injects the univariate-mode dummy `ID`/`Input` columns (`ID =
+#'   "1"`, `Input = 0`) when BOTH are absent from `data`, with a warning --
+#'   or errors when only one of the two is present (ambiguous: e.g. a real,
+#'   multi-valued `Input` with no `ID` would otherwise get every one of its
+#'   distinct positions collapsed onto a single dummy ID). With one distinct
+#'   ID/Input per group, every downstream consumer keyed by ID (the kernel
+#'   matrix, `compute_group_diff()`, ...) runs unmodified: the "kernel
+#'   matrix" is already a literal 1x1 matrix, not a slice of a larger one
+#'   (verified in `dev/univariate/01_closed_form_check.R`). Shared by
+#'   `posterior_mean()` and `fit_kernel()`'s `kern = NULL` branch so both
+#'   switch into univariate mode under the exact same condition, with the
+#'   exact same warning/error text (just prefixed by `caller`, e.g.
+#'   `"posterior_mean"` or `"fit_kernel"`, so the message still points at
+#'   whichever function the user actually called).
+inject_univariate_dummy_cols <- function(data, caller) {
+  has_id    <- "ID" %in% names(data)
+  has_input <- "Input" %in% names(data)
+  if (!has_id && !has_input) {
+    warning(
+      caller, "(): no 'ID'/'Input' columns found in 'data' -- running in ",
+      "univariate mode (each group treated as a single feature, no cross-feature ",
+      "correlation structure)."
+    )
+    data$ID    <- "1"
+    data$Input <- 0
+  } else if (has_id != has_input) {
+    stop(
+      caller, "(): 'data' has one of 'ID'/'Input' but not the other -- ",
+      "either supply both (the general multi-feature case) or neither ",
+      "(univariate mode: one feature per group, both added automatically)."
+    )
+  }
+  data
+}
+
+#' @noRd
+#'
 #' @details Closed-form MLE/REML noise variance for `posterior_mean()`'s
 #'   `kern = NULL` path (derivation in `dev/univariate/NOTES_univariate.md`):
 #'   the minimizer of the exact same restricted likelihood
-#'   `optim_hp(group_col = "Group")` fits numerically via L-BFGS-B, computed
+#'   `fit_kernel(group_col = "Group")` fits numerically via L-BFGS-B, computed
 #'   directly instead (validated to agree with the numeric fit to ~1e-6
 #'   relative error across 405 configurations in
 #'   `dev/univariate/01_closed_form_check.R`). `pooled = TRUE` returns a
@@ -339,13 +376,13 @@ aligned_output <- function(sub, row_order) {
 #'
 #' @details If `cache` is a (single, fresh-per-optimization-run) environment,
 #'   the kernel covariance and its inverse are memoized by `free`: since
-#'   `optim_hp()`'s objective and gradient are evaluated at the same
+#'   `fit_kernel()`'s objective and gradient are evaluated at the same
 #'   `free` within one L-BFGS-B iteration, this avoids recomputing
 #'   `evaluate()` (an O(n^3) operation) twice for the same point.
 #'   `cache = NULL` (the default) disables memoization and recomputes as before.
 #'
 #'   `db` must already contain `Input_ID`/`Input` columns (see
-#'   `normalize_input_cols()`, called by `optim_hp()` before this function is
+#'   `normalize_input_cols()`, called by `fit_kernel()` before this function is
 #'   ever reached). When `db` has exactly one distinct `Input_ID` (the legacy
 #'   scalar-Input case, or an explicitly single-dimensional design), the
 #'   original scalar-position logic runs unchanged: if `db` also contains a
@@ -360,7 +397,7 @@ aligned_output <- function(sub, row_order) {
 #'
 #'   `n_groups`, when non-`NULL`, adds the closed-form REML correction for
 #'   `n_groups` group-specific means already profiled out of `db$Output`
-#'   upstream (by `optim_hp()`'s `group_col` demeaning step -- see there):
+#'   upstream (by `fit_kernel()`'s `group_col` demeaning step -- see there):
 #'   `NLL_REML(theta) = NLL(theta) - (n_groups/2) * log|Sigma'_theta|`. This
 #'   is the exact restricted-likelihood correction for `n_groups` fixed,
 #'   distinct group means estimated by their own empirical mean (proved in
@@ -727,18 +764,38 @@ gr_sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, 
 
 #' Optimize Hyperparameters for a kernel (with additive kernel support)
 #'
-#' @param kern A kernel object inheriting from keRnel's `kernel` class. Its
-#'   construction values (e.g. \code{se_kernel(length_scale = 2)}) are the
-#'   optimization's starting point -- there is no separate `hp` argument.
-#'   Optimizing in \code{keRnel::get_free_params(kern)}'s free/unconstrained
-#'   space (rather than by natural-space hyperparameter name) is what lets
-#'   two sibling sub-kernels sharing a bare hyperparameter name (e.g.
+#' @description
+#' Also the single entry point that unifies univariate and multivariate
+#' fitting: `kern = NULL` delegates to the exact same closed-form fit
+#' `posterior_mean(kern = NULL)` uses internally (works with or without
+#' `ID`/`Input` -- univariate mode is triggered exactly as it is there, see
+#' `inject_univariate_dummy_cols()`), while a real, unfitted kernel object
+#' fits it via L-BFGS-B. Both branches respect `pooled`/`group_col`
+#' identically in spirit (one shared fit vs. one independent fit per group)
+#' and return the same shape (a single kernel object, or a named list keyed
+#' by group), so `posterior_mean(data, kern = fit_kernel(kern, data, pooled =
+#' pooled, ...))` is a uniform two-step pipeline regardless of which branch
+#' ran.
+#'
+#' @param kern `NULL` (default) for the closed-form fit (see `@description`),
+#'   or a kernel object inheriting from keRnel's `kernel` class for a real
+#'   kernel fit. In the latter case, its construction values (e.g.
+#'   \code{se_kernel(length_scale = 2)}) are the optimization's starting
+#'   point -- there is no separate `hp` argument. Optimizing in
+#'   \code{keRnel::get_free_params(kern)}'s free/unconstrained space (rather
+#'   than by natural-space hyperparameter name) is what lets two sibling
+#'   sub-kernels sharing a bare hyperparameter name (e.g.
 #'   \code{se_kernel(length_scale=1) + se_kernel(length_scale=3)}) be given
 #'   genuinely different starting values and be fit independently -- a case
 #'   \code{keRnel::kupdate()} cannot express, since it updates every
 #'   occurrence of a bare name at once.
-#' @param db The dataset used for optimization. Must contain columns `Input` and
-#'   `Output` (plus `Input_ID` for a multi-dimensional Input; see
+#' @param db The dataset used for optimization. Must contain columns `Group`
+#'   and `Output`; `ID`/`Input` (plus `Input_ID` for a multi-dimensional
+#'   Input) may be omitted together to trigger univariate mode (only
+#'   meaningful when `kern = NULL` -- a real kernel has nothing to fit a
+#'   spatial structure to with one dummy position per group). When `kern` is
+#'   a real kernel object, `db` must contain columns `Input` and `Output`
+#'   (plus `Input_ID` for a multi-dimensional Input; see
 #'   \code{\link{normalize_input_cols}}). If it also contains a `Sample` column
 #'   and the same `Input` positions are repeated across samples (i.e.
 #'   replicated measurements), the function automatically uses the correct
@@ -769,6 +826,25 @@ gr_sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, 
 #'   elapsed time) and attaches it as a `trace` data.frame. Defaults to
 #'   `FALSE`, in which case nothing is recorded and the return value is
 #'   identical to before this parameter existed.
+#' @param pooled When `kern = NULL`: passed straight to
+#'   `resolve_closed_form_kernel()` -- `TRUE` (default) shares one estimate
+#'   across every group, `FALSE` gives each group its own (see
+#'   `resolve_closed_form_kernel()`'s own documentation; this is exactly
+#'   `posterior_mean()`'s own `pooled` argument). When `kern` is a real
+#'   kernel object: only used when `group_col` is also supplied. `TRUE`
+#'   (default) shares a single kernel fit across every group (see
+#'   `group_col`'s own documentation for how that pooled fit is built). If
+#'   `FALSE`, `db` is split by `group_col` and `fit_kernel()` is called
+#'   independently on each group's own subset (with that group's
+#'   `prior_mean`, `group_col = NULL` -- no demeaning, a genuine per-group
+#'   MLE/REML fit of the real kernel), returning a named list keyed by group
+#'   instead of a single result. Ignored (with no effect) when `kern` is a
+#'   real kernel object and `group_col` is `NULL`.
+#' @param df_warn Only used when `kern = NULL`. Forwarded to
+#'   `resolve_closed_form_kernel()`/`check_closed_form_df()`: a `warning()`
+#'   is issued below this many residual degrees of freedom (the estimate
+#'   runs but is noisy), and an `error()` at 0 or fewer (undefined). Defaults
+#'   to `8` -- see `posterior_mean()`'s own `df_warn` argument.
 #' @param group_col Name of a column in `db` (e.g. `"Group"`) identifying
 #'   which experimental group each observation belongs to. When supplied,
 #'   pools replicates from every group into a single fit -- centering each
@@ -801,7 +877,11 @@ gr_sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, 
 #'   `mu_random = TRUE` was used to simulate the data. Defaults to `NULL` (no
 #'   group handling, behavior identical to before this parameter existed).
 #'
-#' @return If `verbose` is `FALSE`, a named vector of optimized hyperparameters
+#' @return When `kern = NULL`: a single kernel object (`pooled = TRUE`) or a
+#'   named list of kernel objects keyed by group (`pooled = FALSE`) -- see
+#'   `resolve_closed_form_kernel()`; `verbose`/`max_iter`/`factr`/`pgtol`/
+#'   `track_trace` are not used on this path. Otherwise (a real kernel
+#'   object), if `verbose` is `FALSE`, a named vector of optimized hyperparameters
 #'   in natural (constrained) space (via `keRnel::get_trainable_params()`),
 #'   with the optimizer's `convergence` code and final objective `value`
 #'   attached as attributes (`attr(result, "convergence")`, `attr(result,
@@ -816,23 +896,88 @@ gr_sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, 
 #' @examples
 #' data <- simu_db(nb_id = 8, nb_group = 1, nb_sample = 5)
 #' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-#' optim_hp(kern, data, prior_mean = 0, prior_cov = 1)
+#' fit_kernel(kern, data, prior_mean = 0, prior_cov = 1)
 #'
 #' # Pooling replicates from multiple groups into a single fit, without an
 #' # unmodeled group mean shift biasing the fitted variance:
 #' data2 <- simu_db(nb_id = 8, nb_group = 3, nb_sample = 5, diff_group = 4)
-#' optim_hp(kern, data2, prior_cov = 1, group_col = "Group")
-optim_hp <- function(kern, db, prior_mean = NULL, prior_cov,
-                      pen_diag = 1e-6, verbose = FALSE,
-                      max_iter = 1000,
-                      factr = 1e7, pgtol = 0, track_trace = FALSE,
-                      group_col = NULL) {
+#' fit_kernel(kern, data2, prior_cov = 1, group_col = "Group")
+#'
+#' # Two independent fits (one per group), each its own real, non-demeaned
+#' # kernel HP optimization -- pooled = FALSE:
+#' fits <- fit_kernel(kern, data2, prior_mean = 0, prior_cov = 1,
+#'                     group_col = "Group", pooled = FALSE, verbose = TRUE)
+#' names(fits)
+#'
+#' # kern = NULL: the same pooled/non-pooled choice, but for the closed-form
+#' # fit -- works identically in univariate mode (no ID/Input at all) and in
+#' # multivariate mode (a real ID/Input design), and returns a kernel (or
+#' # named list of kernels) ready for posterior_mean(kern = ...), exactly
+#' # like the real-kernel branch above:
+#' cpg <- data.frame(Group = rep(c("A", "B"), each = 5),
+#'                    Output = c(rnorm(5, 0, 1), rnorm(5, 3, 1)))
+#' fit_kernel(NULL, cpg, pooled = TRUE)   # one shared closed-form kernel
+#' fit_kernel(NULL, cpg, pooled = FALSE)  # one closed-form kernel per group
+fit_kernel <- function(kern = NULL, db, prior_mean = NULL, prior_cov,
+                        pen_diag = 1e-6, verbose = FALSE,
+                        max_iter = 1000,
+                        factr = 1e7, pgtol = 0, track_trace = FALSE,
+                        group_col = NULL, pooled = TRUE, df_warn = 8) {
+  # === kern = NULL: closed-form fit, exactly mirroring posterior_mean()'s
+  # own kern = NULL branch (same inject_univariate_dummy_cols() /
+  # resolve_closed_form_kernel(), same pooled semantics) -- this is what
+  # makes fit_kernel() work uniformly in univariate mode (no ID/Input at
+  # all -- injected here, just as posterior_mean() does) and in
+  # multivariate mode (kern a real, unfitted kernel template, handled
+  # below), for both pooled = TRUE and pooled = FALSE. Returns a single
+  # kernel object (pooled) or a named list keyed by group (non-pooled) --
+  # the exact same shape the real-kernel branch below returns, so
+  # posterior_mean(kern = fit_kernel(...)) is a uniform two-step pipeline
+  # regardless of which path ran here. Scoped to this branch only (not run
+  # for a real kernel fit below) so every existing check/error on `db` for
+  # the real-kernel path stays byte-for-byte unchanged. ===
+  if (is.null(kern)) {
+    if (!all(c("Group", "Output") %in% names(db))) {
+      stop(paste0(
+        "The following columns are missing: ",
+        paste(setdiff(c("Group", "Output"), names(db)), collapse = ", ")
+      ))
+    }
+    db <- inject_univariate_dummy_cols(db, "fit_kernel")
+    if (!is.character(db$Group)) db$Group <- as.character(db$Group)
+    db <- normalize_input_cols(db)
+    return(resolve_closed_form_kernel(db, pooled = pooled, df_warn = df_warn))
+  }
+
   if (!inherits(kern, "kernel")) {
-    stop("'kern' must be a valid kernel object from the keRnel package.")
+    stop("'kern' must be NULL (closed-form fit) or a valid kernel object from the keRnel package.")
   }
   if (!all(c("Input", "Output") %in% names(db))) {
     stop("'db' must contain columns 'Input' and 'Output'.")
   }
+
+  # === pooled = FALSE: split by group_col, fit each group's own kernel
+  # independently (no demeaning -- see @param pooled), recursing back into
+  # this function with group_col = NULL so the ordinary single-fit path
+  # below runs on each group's own subset. Must run before
+  # normalize_input_cols()/finite checks so each recursive call re-validates
+  # its own subset from the same starting point as a direct call would. ===
+  if (!is.null(group_col) && !pooled) {
+    if (!group_col %in% names(db)) {
+      stop("'group_col' (\"", group_col, "\") is not a column of 'db'.")
+    }
+    groups <- unique(as.character(db[[group_col]]))
+    fits <- lapply(groups, function(g) {
+      sub <- db[as.character(db[[group_col]]) == g, , drop = FALSE]
+      fit_kernel(kern, sub, prior_mean = prior_mean, prior_cov = prior_cov,
+                 pen_diag = pen_diag, verbose = verbose, max_iter = max_iter,
+                 factr = factr, pgtol = pgtol, track_trace = track_trace,
+                 group_col = NULL, pooled = TRUE)
+    })
+    names(fits) <- groups
+    return(fits)
+  }
+
   db <- normalize_input_cols(db)
   if (any(!is.finite(db$Input)) || any(!is.finite(db$Output))) {
     stop("'db$Input' and 'db$Output' must not contain NaN, Inf, or NA values.")

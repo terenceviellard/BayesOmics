@@ -5,35 +5,48 @@
 \title{Generate a Synthetic Dataset for BayesOmics}
 \usage{
 simu_db(
-  nb_id = 5,
+  nb_id = NULL,
   nb_group = 2,
   nb_sample = 5,
   nb_dim = 1,
   range_output = c(0, 50),
   range_input = c(0, 50),
   diff_group = 3,
-  var_sample = 2
+  var_sample = 2,
+  univariate = FALSE
 )
 }
 \arguments{
-\item{nb_id}{An integer, indicating the number of id in the data.}
+\item{nb_id}{An integer, indicating the number of id in the data. Ignored when
+\code{univariate = TRUE} (forced to \code{1}); leave at its default (\code{NULL}, resolved to
+\code{5} outside univariate mode and \code{1} inside it) unless overriding the multi-feature count.}
 
 \item{nb_group}{An integer, indicating the number of groups/conditions.}
 
 \item{nb_sample}{An integer, indicating the number of samples in the data for each id (i.e., the repetitions of the same experiment).}
 
-\item{nb_dim}{An integer, indicating the number of Input dimensions per id. Defaults to \code{1} (a single scalar Input per id, emitted with \code{Input_ID = 1}); \code{nb_dim > 1} emits one row per (Group, ID, Sample, Input_ID), \code{Output} repeated identically across the \code{nb_dim} rows of one observation.}
+\item{nb_dim}{An integer, indicating the number of Input dimensions per id. Defaults to \code{1} (a single scalar Input per id, emitted with \code{Input_ID = 1}); \code{nb_dim > 1} emits one row per (Group, ID, Sample, Input_ID), \code{Output} repeated identically across the \code{nb_dim} rows of one observation. Must stay \code{1} when \code{univariate = TRUE} (there is no Input axis to place in higher dimensions).}
 
 \item{range_output}{A 2-sized vector, indicating the range of values for output from which to pick a mean value for each id}
 
-\item{range_input}{A 2-sized vector, indicating the range of values for input from which to pick a mean value for each id (applied independently to every Input dimension)}
+\item{range_input}{A 2-sized vector, indicating the range of values for input from which to pick a mean value for each id (applied independently to every Input dimension). Ignored when \code{univariate = TRUE}.}
 
 \item{diff_group}{A number, indicating the mean difference between consecutive groups.}
 
 \item{var_sample}{A number, indicating the noise variance for each new sample of a id}
+
+\item{univariate}{Logical. If \code{TRUE}, simulate a single feature per group (no
+feature/covariate axis) and return only \code{ID}, \code{Group}, \code{Sample}, \code{Output} -- the
+format \code{posterior_mean()} requires for its univariate mode (see
+\verb{dev/70_documentation/drafts/02_univariate.Rmd}). Requires \code{nb_id = 1} (or left
+at its default) and \code{nb_dim = 1} (or left at its default); \code{range_input} is unused.
+Defaults to \code{FALSE}.}
 }
 \value{
-A full dataset of synthetic data, with columns \code{ID}, \code{Group}, \code{Sample}, \code{Input_ID}, \code{Input}, \code{Output}.
+A full dataset of synthetic data. With \code{univariate = FALSE} (default),
+columns \code{ID}, \code{Group}, \code{Sample}, \code{Input_ID}, \code{Input}, \code{Output}. With
+\code{univariate = TRUE}, columns \code{Group}, \code{Sample}, \code{Output} only (no \code{ID}/\code{Input})
+-- ready to pass to \code{posterior_mean()} for its univariate mode.
 }
 \description{
 Simulate a basic complete training dataset.
@@ -42,4 +55,8 @@ The values of several parameters controlling the data generation process can be 
 }
 \examples{
 data <- simu_db()
+
+# Univariate mode: a single feature per group, ready for posterior_mean()'s
+# univariate mode (no ID/Input columns needed there):
+data_uni <- simu_db(univariate = TRUE)
 }
