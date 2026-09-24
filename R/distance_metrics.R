@@ -19,6 +19,79 @@
   eig$vectors %*% diag(sqrt(pmax(eig$values, 0)), nrow = length(eig$values)) %*% t(eig$vectors)
 }
 
+## Shared helpers behind ovl_metric()'s Monte Carlo/KDE fallback (used when
+## Sigma1 is not a scalar multiple of Sigma2, so the exact closed-form ratio
+## does not apply -- see evaluate_metric.ovl_metric() below).
+
+#' @noRd
+#'
+#' @details Silverman's per-dimension bandwidth rule of thumb for a diagonal
+#'   (product) Gaussian KDE fit on `draws` (n x d): `h_k = sd(draws[, k]) *
+#'   n^(-1/(d+4))`. Floored at a small positive value so a (near-)degenerate
+#'   dimension (near-zero variance across draws) does not collapse that
+#'   axis's kernel to a point mass and blow up the log-density below.
+.kde_bandwidth <- function(draws) {
+  n <- nrow(draws)
+  d <- ncol(draws)
+  h <- apply(draws, 2, stats::sd) * n^(-1 / (d + 4))
+  pmax(h, 1e-8)
+}
+
+#' @noRd
+#'
+#' @details Log-density of a diagonal (product) Gaussian KDE fit on
+#'   `ref_draws` (n_ref x d, per-dimension bandwidth `bw`), evaluated at
+#'   every row of `query` (n_query x d). Computed in log-space -- rather
+#'   than multiplying `d` per-dimension kernel values directly -- to avoid
+#'   underflow when `d` is large, via a numerically stable log-sum-exp over
+#'   reference points (the max-subtraction trick). O(n_query * n_ref * d).
+.log_kde_eval <- function(query, ref_draws, bw) {
+  n_ref <- nrow(ref_draws)
+  d     <- ncol(ref_draws)
+  bw_mat_q <- matrix(bw, nrow(query), d, byrow = TRUE)
+  bw_mat_r <- matrix(bw, n_ref,        d, byrow = TRUE)
+  scaled_query <- query / bw_mat_q
+  scaled_ref   <- ref_draws / bw_mat_r
+  # sq_dist[i, j] = sum_k ((query[i, k] - ref_draws[j, k]) / bw[k])^2
+  sq_dist <- outer(rowSums(scaled_query^2), rowSums(scaled_ref^2), "+") -
+    2 * scaled_query %*% t(scaled_ref)
+  log_kernel <- -0.5 * d * log(2 * pi) - sum(log(bw)) - 0.5 * sq_dist
+  m <- apply(log_kernel, 1, max)
+  log_sum <- m + log(rowSums(exp(log_kernel - m)))
+  log_sum - log(n_ref)
+}
+
+#' @noRd
+#'
+#' @details Monte Carlo estimate of \eqn{OVL = \int\min(f_1,f_2)\,dx} for two
+#'   general (not necessarily proportional-covariance) Gaussians, using the
+#'   two-sample identity \eqn{OVL = E_{f_1}[\min(1, f_2/f_1)] = E_{f_2}[\min(1,
+#'   f_1/f_2)]} (both exact in the population limit; averaged here for lower
+#'   variance). `n_mc` fresh draws are simulated directly from
+#'   \eqn{N(\mu_1,\Sigma_1)} and \eqn{N(\mu_2,\Sigma_2)} (no posterior
+#'   samples/`sample_posterior()` call needed -- `mu`/`Sigma` fully
+#'   characterize each Gaussian already), then `f_1`/`f_2` are estimated by a
+#'   diagonal Gaussian KDE on each simulated sample (see `.kde_bandwidth()`/
+#'   `.log_kde_eval()`). Noisier (Monte Carlo + KDE bias) and increasingly
+#'   unreliable as `d = length(mu1)` grows (the curse of dimensionality for
+#'   KDE) -- this is only reached when the exact formula does not apply.
+.ovl_mc_fallback <- function(mu1, mu2, Sigma1, Sigma2, n_mc) {
+  draws1 <- matrix(mvtnorm::rmvnorm(n_mc, mean = mu1, sigma = Sigma1), nrow = n_mc)
+  draws2 <- matrix(mvtnorm::rmvnorm(n_mc, mean = mu2, sigma = Sigma2), nrow = n_mc)
+
+  bw1 <- .kde_bandwidth(draws1)
+  bw2 <- .kde_bandwidth(draws2)
+
+  log_f1_at_1 <- .log_kde_eval(draws1, draws1, bw1)
+  log_f2_at_1 <- .log_kde_eval(draws1, draws2, bw2)
+  log_f1_at_2 <- .log_kde_eval(draws2, draws1, bw1)
+  log_f2_at_2 <- .log_kde_eval(draws2, draws2, bw2)
+
+  term1 <- mean(exp(pmin(0, log_f2_at_1 - log_f1_at_1)))
+  term2 <- mean(exp(pmin(0, log_f1_at_2 - log_f2_at_2)))
+  0.5 * (term1 + term2)
+}
+
 #' @title Group-Difference Metrics for BayesOmics Posteriors
 #'
 #' @description
@@ -39,8 +112,10 @@
 #'     the \code{n_obs + lambda_0} divisors from \code{\link{posterior_mean}},
 #'     and \code{same_kernel} whether the two groups share the same \code{kernel_key}.}
 #'   \item{\code{requires_shared_kernel(metric)}}{\code{TRUE} if the metric has
-#'     no valid formula unless the two groups share the same \code{kernel_key}
-#'     (only \code{\link{ovl_metric}}). Defaults to \code{FALSE}.}
+#'     no valid formula at all unless the two groups share the same
+#'     \code{kernel_key} (no metric here needs this -- \code{\link{ovl_metric}}
+#'     instead switches internally to a Monte Carlo/KDE fallback when they
+#'     don't, see its own documentation). Defaults to \code{FALSE}.}
 #'   \item{\code{is_symmetric_metric(metric)}}{\code{TRUE} if swapping the two
 #'     groups never changes the value (\code{\link{kl_metric}} and
 #'     \code{\link{mahalanobis_metric}} are not -- the latter is evaluated
@@ -111,24 +186,40 @@ evaluate_metric.mahalanobis_metric <- function(metric, mu1, mu2, Sigma1, Sigma2,
 }
 
 #' @title Gaussian Overlapping Coefficient (OVL) Metric
-#' @description The exact closed-form overlapping coefficient between two
-#'   groups' posteriors, as used by \code{\link{calculate_group_overlaps}}.
-#'   Requires the two groups to share the same \code{kernel_key} (so
-#'   \eqn{\Sigma_2 = c\Sigma_1} for a scalar \eqn{c = \mathrm{scale}_1/\mathrm{scale}_2});
-#'   there is no general fallback for this metric.
+#' @description The overlapping coefficient between two groups' posteriors,
+#'   as used by \code{\link{calculate_group_overlaps}}. Same call in every
+#'   case: when the two groups share the same \code{kernel_key} (so
+#'   \eqn{\Sigma_2 = c\Sigma_1} for a scalar \eqn{c =
+#'   \mathrm{scale}_1/\mathrm{scale}_2}), the exact closed-form ratio is
+#'   used. Otherwise (e.g. \code{pooled = FALSE}, or two groups fit with
+#'   genuinely different kernels), there is no closed form -- the
+#'   log-likelihood-ratio boundary between the two Gaussians then has a
+#'   different weight per axis, not reducible to one (noncentral)
+#'   chi-squared variable -- so a Monte Carlo/KDE estimate is used
+#'   automatically instead (\code{.ovl_mc_fallback()}): \code{n_mc} draws
+#'   simulated directly from each group's \eqn{N(\mu,\Sigma)}, then the
+#'   two-sample identity \eqn{OVL = E_{f_1}[\min(1, f_2/f_1)] = E_{f_2}[\min(1,
+#'   f_1/f_2)]} with \eqn{f_1}/\eqn{f_2} estimated by a diagonal Gaussian KDE.
+#'   Noisier and increasingly unreliable as the number of shared IDs grows
+#'   (the curse of dimensionality for KDE) -- only reached when the exact
+#'   formula does not apply, so it never affects the pooled case.
+#' @param n_mc Number of Monte Carlo draws used by the KDE fallback (see
+#'   above); irrelevant (unused) whenever the two groups share a
+#'   \code{kernel_key}, since the exact formula applies then. Defaults to
+#'   \code{2000}.
 #' @return A \code{distance_metric} object.
 #' @export
-ovl_metric <- function() {
-  structure(list(), class = c("ovl_metric", "distance_metric"))
+ovl_metric <- function(n_mc = 2000) {
+  structure(list(n_mc = n_mc), class = c("ovl_metric", "distance_metric"))
 }
 
 #' @export
-requires_shared_kernel.ovl_metric <- function(metric) TRUE
-
-#' @export
 evaluate_metric.ovl_metric <- function(metric, mu1, mu2, Sigma1, Sigma2, scale1 = NULL, scale2 = NULL, same_kernel = FALSE, ...) {
+  if (!same_kernel) {
+    return(.ovl_mc_fallback(mu1, mu2, Sigma1, Sigma2, metric$n_mc))
+  }
   if (is.null(scale1) || is.null(scale2)) {
-    stop("ovl_metric() requires 'scale1' and 'scale2' (the posterior scale of each group).")
+    stop("ovl_metric() requires 'scale1' and 'scale2' (the posterior scale of each group) for the closed-form (same-kernel) case.")
   }
   d <- length(mu1)
   delta <- mu1 - mu2
@@ -542,4 +633,104 @@ compute_group_diff <- function(results, metric, max_groups_warn = 50, max_dim_wa
     }
   }
   diff_matrix
+}
+
+## ===========================================================================
+## group_diff(): convenience wrapper -- sensible default metric, nicer print.
+## ===========================================================================
+
+#' @noRd
+#'
+#' @details Builds a human-readable call-like label for a \code{distance_metric}
+#' object from its class name and fields, e.g. \code{ovl_metric()},
+#' \code{per_feature_metric(wasserstein_metric(), power = 0.5)},
+#' \code{kl_metric(direction = 1to2)}. Generic (works for any current or
+#' future metric via introspection) rather than hardcoded per class: a
+#' \code{base} field (decorators) is recursed into first, then every other
+#' field is rendered as \code{name = value}.
+.metric_label <- function(metric) {
+  ctor <- class(metric)[1]
+  args <- character(0)
+  if (!is.null(metric$base)) {
+    args <- c(args, .metric_label(metric$base))
+  }
+  other <- metric[setdiff(names(metric), "base")]
+  if (length(other) > 0) {
+    args <- c(args, paste0(names(other), " = ", vapply(other, function(v) paste(format(v), collapse = ", "), character(1))))
+  }
+  paste0(ctor, "(", paste(args, collapse = ", "), ")")
+}
+
+#' @title Compare Two Groups' Posteriors, with a Sensible Default Metric
+#'
+#' @description
+#' A convenience wrapper around \code{\link{compute_group_diff}}. When
+#' \code{metric = NULL} (the default), the metric is chosen automatically
+#' from the number of shared IDs \code{d}: \code{\link{ovl_metric}()} for
+#' \code{d <= id_threshold} (still interpretable, not yet dimension-collapsed),
+#' or \code{\link{per_feature_metric}(\link{wasserstein_metric}(), power =
+#' 0.5)} otherwise -- a per-feature-normalized distance that keeps growing
+#' informatively with \code{d} instead of collapsing toward a degenerate
+#' value (see \code{dev/30_package_dev/distance_metrics/distance-metrics.Rmd}
+#' for the empirical study behind this choice, and the "Choice of metric"
+#' article). Supplying \code{metric} explicitly bypasses this choice
+#' entirely and behaves exactly like \code{\link{compute_group_diff}}.
+#'
+#' The returned matrix carries the metric actually used (as a label) and
+#' prints it above the matrix, so an auto-selected default is never silently
+#' invisible even if the result is stored and printed again later.
+#'
+#' @param results A list, typically from \code{\link{posterior_mean}}; see
+#'   \code{\link{compute_group_diff}}.
+#' @param metric A \code{distance_metric} object, or \code{NULL} (default) to
+#'   auto-select based on the number of shared IDs (see \code{id_threshold}).
+#' @param id_threshold The number of shared IDs at or below which
+#'   \code{\link{ovl_metric}()} is auto-selected (above it,
+#'   \code{per_feature_metric(wasserstein_metric(), power = 0.5)} is used
+#'   instead). Only used when \code{metric = NULL}. Defaults to \code{6}.
+#' @param ... Forwarded to \code{\link{compute_group_diff}} (e.g.
+#'   \code{max_groups_warn}, \code{max_dim_warn}).
+#'
+#' @return A \code{group_diff_result} object: the same matrix
+#'   \code{\link{compute_group_diff}} returns (still usable as a plain
+#'   matrix, e.g. \code{result["g1", "g2"]}), with an extra
+#'   \code{"metric_label"} attribute and its own \code{print} method.
+#' @export
+#'
+#' @examples
+#' data <- simu_db(nb_id = 8, nb_group = 2, nb_sample = 5, diff_group = 5)
+#' kern <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
+#' posterior <- posterior_mean(data, kern)
+#' group_diff(posterior)                # d = 8 > 6 -> per_feature_metric(wasserstein_metric(), power = 0.5)
+#' group_diff(posterior, ovl_metric())  # explicit metric, bypasses auto-selection
+group_diff <- function(results, metric = NULL, id_threshold = 6, ...) {
+  if (!is.list(results) || !all(c("kernels", "groups") %in% names(results)) || length(results$groups) == 0) {
+    stop("'results' must be the list returned by posterior_mean() (with 'kernels' and 'groups').")
+  }
+  if (is.null(metric)) {
+    d <- length(results$groups[[1]]$muk)
+    metric <- if (d <= id_threshold) ovl_metric() else per_feature_metric(wasserstein_metric(), power = 0.5)
+  } else if (!inherits(metric, "distance_metric")) {
+    stop("'metric' must be NULL or a distance_metric object (e.g. ovl_metric(), kl_metric(), wasserstein_metric()).")
+  }
+  mat <- compute_group_diff(results, metric, ...)
+  attr(mat, "metric_label") <- .metric_label(metric)
+  class(mat) <- c("group_diff_result", class(mat))
+  mat
+}
+
+#' @title Print a Group-Difference Result
+#' @description Prints the metric that was used (see \code{\link{group_diff}}),
+#'   then the underlying matrix.
+#' @param x A \code{group_diff_result} object, from \code{\link{group_diff}}.
+#' @param ... Unused, included for S3 consistency.
+#' @return \code{x}, invisibly.
+#' @export
+print.group_diff_result <- function(x, ...) {
+  cat("Metric:", attr(x, "metric_label"), "\n\n")
+  plain <- x
+  attr(plain, "metric_label") <- NULL
+  class(plain) <- setdiff(class(plain), "group_diff_result")
+  print(plain, ...)
+  invisible(x)
 }

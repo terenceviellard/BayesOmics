@@ -206,7 +206,7 @@ test_that("per_feature_metric divides the base metric's value by d^power exactly
 })
 
 test_that("per_feature_metric forwards requires_shared_kernel/is_symmetric_metric to its base", {
-  expect_true(requires_shared_kernel(per_feature_metric(ovl_metric(), power = 1)))
+  expect_false(requires_shared_kernel(per_feature_metric(ovl_metric(), power = 1)))
   expect_false(requires_shared_kernel(per_feature_metric(mahalanobis_metric(), power = 1)))
   expect_false(is_symmetric_metric(per_feature_metric(kl_metric(), power = 1)))
   expect_false(is_symmetric_metric(per_feature_metric(mahalanobis_metric(), power = 1)))
@@ -245,7 +245,7 @@ test_that("marginal_metric(ovl_metric()) resists the joint-overlap collapse rela
 })
 
 test_that("marginal_metric forwards requires_shared_kernel/is_symmetric_metric to its base", {
-  expect_true(requires_shared_kernel(marginal_metric(ovl_metric())))
+  expect_false(requires_shared_kernel(marginal_metric(ovl_metric())))
   expect_false(is_symmetric_metric(marginal_metric(kl_metric())))
 })
 
@@ -267,14 +267,19 @@ test_that("significant_fraction_metric stays in [0, 1]", {
   expect_true(frac >= 0 && frac <= 1)
 })
 
-# -- ovl_metric: requires_shared_kernel enforced by the driver -----------------
+# -- ovl_metric: no shared-kernel requirement (Monte Carlo/KDE fallback) ------
 
-test_that("compute_group_diff errors for ovl_metric when groups don't share the same kernel_key", {
+test_that("compute_group_diff(ovl_metric()) falls back to a Monte Carlo/KDE estimate when groups don't share the same kernel_key", {
+  # Ground truth: exact numeric integration of min(dnorm(x,0,1), dnorm(x,0,sqrt(2))).
+  true_ovl <- integrate(function(x) pmin(dnorm(x, 0, 1), dnorm(x, 0, sqrt(2))), -20, 20)$value
   res <- make_custom_results(list(
     g1 = list(muk = c(ID_1 = 0), sigma = matrix(1, 1, 1)),
     g2 = list(muk = c(ID_1 = 0), sigma = matrix(2, 1, 1))
   ))
-  expect_error(compute_group_diff(res, ovl_metric()), "kernel matrix|kernel_key")
+  set.seed(1)
+  ovl_hat <- compute_group_diff(res, ovl_metric())["g1", "g2"]
+  expect_true(ovl_hat >= 0 && ovl_hat <= 1)
+  expect_equal(ovl_hat, true_ovl, tolerance = 0.05)
 })
 
 test_that("compute_group_diff does not require a shared kernel_key for metrics that don't need it", {
@@ -285,12 +290,91 @@ test_that("compute_group_diff does not require a shared kernel_key for metrics t
   expect_no_error(compute_group_diff(res, mahalanobis_metric()))
 })
 
-test_that("requires_shared_kernel is TRUE only for ovl_metric among the base metrics", {
-  expect_true(requires_shared_kernel(ovl_metric()))
-  for (m in list(mahalanobis_metric(), kl_metric(), jeffreys_metric(),
+test_that("requires_shared_kernel is FALSE for every base metric (ovl_metric() has its own MC fallback instead)", {
+  for (m in list(ovl_metric(), mahalanobis_metric(), kl_metric(), jeffreys_metric(),
                  bhattacharyya_metric(), hellinger_metric(), wasserstein_metric())) {
     expect_false(requires_shared_kernel(m), info = class(m)[1])
   }
+})
+
+test_that("ovl_metric() MC fallback matches the exact closed form in multivariate, when the covariances actually are proportional", {
+  # Forcing same_kernel = FALSE (the MC path) on a case where Sigma2 = c*Sigma1
+  # genuinely holds lets us validate the fallback against ovl_metric()'s own
+  # exact formula (called directly with same_kernel = TRUE on the identical
+  # mu/Sigma), rather than against a hand-derived ground truth.
+  set.seed(7)
+  mu1 <- c(0, 0, 0)
+  mu2 <- c(1, -0.5, 2)
+  Sigma1 <- diag(c(1, 2, 0.5))
+  Sigma2 <- 2 * Sigma1  # c_ratio = scale1/scale2 = 2 => scale1 = 2, scale2 = 1
+  exact <- evaluate_metric(ovl_metric(), mu1, mu2, Sigma1, Sigma2,
+                            scale1 = 2, scale2 = 1, same_kernel = TRUE)
+  mc <- evaluate_metric(ovl_metric(n_mc = 4000), mu1, mu2, Sigma1, Sigma2,
+                         scale1 = 2, scale2 = 1, same_kernel = FALSE)
+  expect_true(exact >= 0 && exact <= 1)
+  expect_equal(mc, exact, tolerance = 0.05)
+})
+
+test_that("marginal_metric(ovl_metric()) no longer errors when groups don't share a kernel_key", {
+  set.seed(8)
+  cpg <- data.frame(
+    Group  = rep(c("A", "B"), each = 6),
+    Sample = rep(1:6, 2),
+    Output = c(rnorm(6, 0, 1), rnorm(6, 3, 4))
+  )
+  post <- suppressWarnings(posterior_mean(cpg, pooled = FALSE))
+  val <- compute_group_diff(post, marginal_metric(ovl_metric()))["A", "B"]
+  expect_true(val >= 0 && val <= 1)
+})
+
+# -- group_diff(): convenience wrapper with default-metric auto-selection -----
+
+test_that("group_diff() auto-selects ovl_metric() when the number of shared IDs is at or below id_threshold", {
+  res <- make_simple_results(n_groups = 2, n_ids = 4)
+  mat <- group_diff(res, id_threshold = 6)
+  expect_equal(attr(mat, "metric_label"), .metric_label(ovl_metric()))
+  expect_equal(unclass(mat), compute_group_diff(res, ovl_metric()), ignore_attr = TRUE)
+})
+
+test_that("group_diff() auto-selects per_feature_metric(wasserstein_metric(), power = 0.5) above id_threshold", {
+  res <- make_simple_results(n_groups = 2, n_ids = 8)
+  mat <- group_diff(res, id_threshold = 6)
+  expect_equal(attr(mat, "metric_label"), .metric_label(per_feature_metric(wasserstein_metric(), power = 0.5)))
+  expect_equal(unclass(mat), compute_group_diff(res, per_feature_metric(wasserstein_metric(), power = 0.5)), ignore_attr = TRUE)
+})
+
+test_that("group_diff() respects a custom id_threshold", {
+  res <- make_simple_results(n_groups = 2, n_ids = 4)
+  mat <- group_diff(res, id_threshold = 2)
+  expect_equal(attr(mat, "metric_label"), .metric_label(per_feature_metric(wasserstein_metric(), power = 0.5)))
+})
+
+test_that("group_diff() with an explicit metric bypasses auto-selection entirely", {
+  res <- make_simple_results(n_groups = 2, n_ids = 8)
+  mat <- group_diff(res, metric = mahalanobis_metric())
+  expect_equal(attr(mat, "metric_label"), .metric_label(mahalanobis_metric()))
+  expect_equal(unclass(mat), compute_group_diff(res, mahalanobis_metric()), ignore_attr = TRUE)
+})
+
+test_that("group_diff() result stays usable as a plain matrix (indexing, dim)", {
+  res <- make_simple_results(n_groups = 3, n_ids = 4)
+  mat <- group_diff(res)
+  expect_true(inherits(mat, "matrix"))
+  expect_equal(dim(mat), c(3, 3))
+  expect_true(is.numeric(mat["g1", "g2"]))
+})
+
+test_that("group_diff() errors on malformed 'results' or a non-distance_metric 'metric'", {
+  expect_error(group_diff(list(foo = 1)), "kernels.*groups|groups.*kernels")
+  res <- make_simple_results(n_groups = 2, n_ids = 4)
+  expect_error(group_diff(res, metric = "not a metric"), "distance_metric")
+})
+
+test_that("print.group_diff_result() shows the metric label and the matrix, without leaking the attribute", {
+  res <- make_simple_results(n_groups = 2, n_ids = 4)
+  out <- capture.output(print(group_diff(res, id_threshold = 6)))
+  expect_true(any(grepl("^Metric: ovl_metric", out)))
+  expect_false(any(grepl("metric_label", out)))
 })
 
 # -- edge cases -----------------------------------------------------------------

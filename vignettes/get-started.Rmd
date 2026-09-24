@@ -81,7 +81,7 @@ $$
 set.seed(42)
 data <- simu_db_kernel(
   kernel      = kern_true,
-  nb_id       = 10,
+  nb_id       = 6,
   nb_group    = 2,
   nb_sample   = 8,
   diff_group  = 0.8,
@@ -178,9 +178,13 @@ samples <- sample_posterior(posterior, n = 2000)
 
 ## Differential analysis
 
-`calculate_group_overlaps()` returns the pairwise Overlapping Coefficient (OVL)
-between every pair of groups. Groups with different sample sizes are fully
-supported  -  see `vignette("sample_size_scenarios")` for a detailed exploration
+`group_diff()` compares every pair of groups with a sensible default metric,
+chosen automatically from the number of features being compared -- no
+metric to pick by hand (see `?group_diff` if you want to choose one
+explicitly, e.g. `group_diff(posterior, wasserstein_metric())`). With 6
+features here, it picks the pairwise Overlapping Coefficient (OVL). Groups
+with different sample sizes are fully
+supported  -  see `vignette("07_unequal_sample_size")` for a detailed exploration
 of how replicate counts affect posterior width and the resulting OVL.
 OVL = 1 means identical posteriors (no
 differential signal); OVL ~ 0 means fully separated profiles (strong
@@ -195,7 +199,7 @@ means under the posterior covariance of the reference group, and $\Phi$ is the
 standard normal CDF.
 
 ```{r}
-calculate_group_overlaps(posterior)
+group_diff(posterior)
 ```
 
 Overlapping coefficient can be seen as a single-number summary of the differential signal on the whole region of interest. It is useful for ranking features, but it is sensible to curse of dimensionality: the more features you include, the more likely it is that the joint overlap will be low. The OVL is a global measure, and it does not tell you which features are driving the difference.
@@ -212,11 +216,11 @@ multi_diff <- compute_multi_diff(samples, results = posterior)
 multi_diff$Diff_proba
 ```
 
-```{r, fig.alt = "Empirical distribution of the number of features where group 1's posterior draw exceeds group 2's, spread broadly across 0 to 10 features rather than spiked at either extreme, alongside the posterior-mean-per-feature panel"}
+```{r, fig.alt = "Empirical distribution of the number of features where group 1's posterior draw exceeds group 2's, spread broadly across 0 to 6 features rather than spiked at either extreme, alongside the posterior-mean-per-feature panel"}
 plot_multi_diff(multi_diff)
 ```
 
-The bar-chart panel is spread broadly across 0 to 10 features, rather than
+The bar-chart panel is spread broadly across 0 to 6 features, rather than
 spiked at either extreme -- group 1 does not exceed group 2 on every feature,
 nor on none. This is consistent with a real, but partial and non-caricatural,
 differential signal: exactly the kind of nuance the single OVL number above
@@ -245,6 +249,9 @@ plot_posterior_overlap(samples,
 
 | Vignette | What you will find |
 |---|---|
-| `vignette("omics-analysis")` | Full worked examples  -  realistic biological context, kernel composition (SE + Noise), HP interpretation, two-group and four-group dose-response designs, and every plot function. |
-| `vignette("sample_size_scenarios")` | How unbalanced designs affect posterior width and the OVL, and why the comparison remains valid with strongly unequal sample sizes. |
-| `vignette("troubleshooting")` | Exact error messages you may encounter, what causes each of them, and the targeted fix. |
+| `vignette("01_basic_pipeline")` | The complete two-group walkthrough  -  kernel choice, hyperparameter fitting, posterior computation, `group_diff()`. |
+| `vignette("04_multi_group")` | Reading a `group_diff()` matrix and `plot_multi_diff()` output for more than two groups (e.g. a dose-response design). |
+| `vignette("05_metric_choice")` | Why the joint OVL saturates as the number of features grows, and when to prefer per-feature Wasserstein instead. |
+| `vignette("07_unequal_sample_size")` | How unbalanced designs affect posterior width and the OVL, and why the comparison remains valid with strongly unequal sample sizes. |
+| `vignette("10_real_data")` | Reshaping a real dataset (not a simulation) into the BayesOmics long format. |
+| `vignette("troubleshooting")` | Exact error messages you may encounter, what causes each of them, and the targeted fix  -  with a full index of every analysis vignette. |

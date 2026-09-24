@@ -810,17 +810,80 @@ build_multi_diff_panel <- function(db_plot, group1, group2, cumulative, overlap_
   gg
 }
 
+## Overview heatmap for plot_multi_diff()'s >2-groups case: one tile per
+## group pair, filled by Overlap_coef when compute_multi_diff() was given
+## `results` (the exact, region-wide OVL), or otherwise by a proxy derived
+## directly from Diff_proba -- how far the Nb_id distribution's probability
+## mass sits from a 50/50 split around its own midline (1 = balanced/fully
+## overlapping, 0 = fully one-sided/differential) -- so an at-a-glance
+## overview is always available even without `results`. Mirrors
+## plot_group_overlap_heatmap()'s look (same colour scale/theme), but
+## summarizes the *region-wide* Diff_proba/Overlap_coef rather than a
+## single feature's empirical overlap.
+#' @noRd
+build_multi_diff_heatmap <- function(multi_diff, list_groups, digits = 2) {
+  proba_diff   <- multi_diff$Diff_proba
+  has_overlap  <- !is.null(multi_diff$Overlap_coef)
+
+  pairs  <- utils::combn(list_groups, 2, simplify = FALSE)
+  scores <- do.call(rbind, lapply(pairs, function(p) {
+    g1 <- p[1]; g2 <- p[2]
+    db <- proba_diff %>%
+      dplyr::filter((.data$Group1 == g1 & .data$Group2 == g2) | (.data$Group1 == g2 & .data$Group2 == g1))
+    if (has_overlap) {
+      val <- multi_diff$Overlap_coef %>%
+        dplyr::filter((.data$Group1 == g1 & .data$Group2 == g2) | (.data$Group1 == g2 & .data$Group2 == g1)) %>%
+        dplyr::pull(.data$Overlap_coef)
+    } else {
+      mid           <- max(db$Nb_id) / 2
+      cumul_at_mid  <- max(db$Cumul_proba[db$Nb_id <= mid])
+      val           <- 1 - 2 * abs(cumul_at_mid - 0.5)
+    }
+    data.frame(Group1 = g1, Group2 = g2, Overlap = val)
+  }))
+
+  long <- rbind(
+    scores,
+    data.frame(Group1 = scores$Group2, Group2 = scores$Group1, Overlap = scores$Overlap),
+    data.frame(Group1 = list_groups,   Group2 = list_groups,   Overlap = 1)
+  )
+
+  ggplot2::ggplot(long, ggplot2::aes(x = .data$Group1, y = .data$Group2, fill = .data$Overlap)) +
+    ggplot2::geom_tile(color = "white") +
+    ggplot2::geom_text(ggplot2::aes(label = sprintf(paste0("%.", digits, "f"), .data$Overlap)), size = 3) +
+    ggplot2::scale_fill_gradient(low = "#F2F3F8", high = "#5E72A4", limits = c(0, 1), name = "Overlap") +
+    ggplot2::labs(
+      title = if (has_overlap) "Pairwise overlap (OVL, region-wide)" else "Pairwise overlap (proxy from Nb_id spread)",
+      x = NULL, y = NULL
+    ) +
+    theme_bayesomics() +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1))
+}
+
 #' @title Plot a multivariate summary of group differences
 #'
 #' @description
-#' For every pair of groups present in \code{multi_diff}, plots the empirical
-#' distribution of the number of IDs for which group1's posterior draw exceeds
-#' group2's (see \code{\link{compute_multi_diff}}), arranged as an
-#' upper-triangular grid of panels via \code{gridExtra::grid.arrange} -- one
-#' panel per pair, with no cap on the number of groups (mirrors
-#' \code{\link{plot_distrib_each_pair}}'s equivalent no-cap behaviour). This
+#' For every pair of groups present in \code{multi_diff}, builds the
+#' empirical distribution of the number of IDs for which group1's posterior
+#' draw exceeds group2's (see \code{\link{compute_multi_diff}}). This
 #' complements \code{\link{plot_distrib}}'s per-id view with a region-wide,
 #' uncertainty-aware summary of whether two groups are differential.
+#'
+#' Behaviour depends on how many groups are involved:
+#' \itemize{
+#'   \item \strong{exactly two groups}: the pair panel (plus the id-mean
+#'     panel if \code{plot_mean = TRUE}), combined via
+#'     \code{gridExtra::grid.arrange} -- unchanged from previous versions.
+#'   \item \strong{more than two groups}: cramming every pair's panel into
+#'     one upper-triangular grid stops being readable well before the panels
+#'     stop fitting (a 4-group design already leaves 2 empty grid cells and
+#'     shrinks 6 panels down to illegibility). Instead, an at-a-glance
+#'     overview -- a heatmap with one tile per pair (plus the id-mean panel
+#'     if requested) -- is displayed immediately, and the full,
+#'     never-capped set of individual pair panels is returned invisibly for
+#'     on-demand inspection (mirrors \code{\link{plot_distrib_each_pair}}'s
+#'     no-cap philosophy), e.g. \code{plot_multi_diff(multi_diff)$pairs[["A_vs_B"]]}.
+#' }
 #'
 #' @param multi_diff A list, typically coming from
 #'    \code{\link{compute_multi_diff}}, with elements \code{Diff_proba} and
@@ -833,8 +896,13 @@ build_multi_diff_panel <- function(db_plot, group1, group2, cumulative, overlap_
 #'    cumulative distribution (\code{TRUE}) or the probability mass (\code{FALSE},
 #'    default) of the number of IDs where group1's posterior draw exceeds group2's.
 #'
-#' @return The result of \code{gridExtra::grid.arrange}: a grid of panels, one
-#'    per group pair, plus (if \code{plot_mean = TRUE}) the id-mean panel.
+#' @return With exactly two groups: the result of \code{gridExtra::grid.arrange}
+#'    (the pair panel, plus the id-mean panel if \code{plot_mean = TRUE}).
+#'    With more than two groups: invisibly, a list with \code{heatmap} (the
+#'    overview \code{ggplot}, already displayed), \code{pairs} (a named list
+#'    of \code{ggplot} objects, one per pair, named
+#'    \code{"<group1>_vs_<group2>"}), and \code{mean} (the id-mean
+#'    \code{ggplot}, only when \code{plot_mean = TRUE}; also already displayed).
 #' @export
 #'
 #' @examples
@@ -843,7 +911,8 @@ build_multi_diff_panel <- function(db_plot, group1, group2, cumulative, overlap_
 #' posterior <- posterior_mean(data, kern)
 #' samples <- sample_posterior(posterior, n = 500)
 #' multi_diff <- compute_multi_diff(samples, results = posterior)
-#' plot_multi_diff(multi_diff)
+#' out <- plot_multi_diff(multi_diff)  # displays the heatmap + mean panel
+#' out$pairs[["1_vs_2"]]               # inspect one pair in full detail
 plot_multi_diff <- function(multi_diff, plot_mean = TRUE, cumulative = FALSE) {
 
   if (!is.list(multi_diff) || !all(c("Diff_proba", "Diff_mean") %in% names(multi_diff))) {
@@ -874,35 +943,17 @@ plot_multi_diff <- function(multi_diff, plot_mean = TRUE, cumulative = FALSE) {
     stop("plot_multi_diff() requires at least two groups in 'multi_diff'.")
   }
 
-  gg <- list()
-  counter <- 0
-
-  layout_matrix <- matrix(NA,
-                          nrow = length(list_groups) - 1,
-                          ncol = length(list_groups) - 1
-                          )
-
-  layout_x <- 0
+  ## Every pair's panel, built once up front regardless of group count --
+  ## reused both for the 2-group combined grid and the >2-group drill-down list.
+  pair_panels <- list()
   list_remaining_groups <- list_groups
-
   for (i in list_groups) {
-
-    layout_x <- layout_x + 1
-    layout_y <- layout_x - 1
-
     list_remaining_groups <- list_remaining_groups[-1]
-
     for (j in list_remaining_groups) {
-
-      layout_y <- layout_y + 1
-
       db_plot <- proba_diff %>%
         dplyr::filter(
           (.data$Group1 == i & .data$Group2 == j) | (.data$Group1 == j & .data$Group2 == i)
         )
-
-      counter <- counter + 1
-      layout_matrix[layout_x, layout_y] <- counter
 
       overlap_coef <- NULL
       if (!is.null(multi_diff$Overlap_coef)) {
@@ -914,21 +965,26 @@ plot_multi_diff <- function(multi_diff, plot_mean = TRUE, cumulative = FALSE) {
         if (length(overlap_coef) == 0) overlap_coef <- NULL
       }
 
-      gg[[counter]] <- build_multi_diff_panel(db_plot, i, j, cumulative, overlap_coef)
+      pair_panels[[paste0(i, "_vs_", j)]] <- build_multi_diff_panel(db_plot, i, j, cumulative, overlap_coef)
     }
   }
 
-  if (plot_mean) {
+  mean_panel <- if (plot_mean) build_posterior_mean_plot(multi_diff$Diff_mean) else NULL
 
-    if (length(list_groups) == 2) {
-      layout_matrix <- as.matrix(c(1, 2))
-    } else {
-      layout_matrix[length(list_groups) - 1, 1] <- counter + 1
-    }
-
-    gg[[counter + 1]] <- build_posterior_mean_plot(multi_diff$Diff_mean)
+  ## Exactly two groups: unchanged behaviour.
+  if (length(list_groups) == 2) {
+    grobs <- if (plot_mean) list(pair_panels[[1]], mean_panel) else list(pair_panels[[1]])
+    return(gridExtra::grid.arrange(grobs = grobs, ncol = 1))
   }
 
-  gridExtra::grid.arrange(grobs = gg, layout_matrix = layout_matrix) %>%
-    return()
+  ## More than two groups: display the overview immediately (heatmap + mean
+  ## panel), and return every individual pair panel invisibly, uncapped and
+  ## never crammed into a shared grid.
+  heatmap_gg <- build_multi_diff_heatmap(multi_diff, list_groups)
+  overview_grobs <- if (plot_mean) list(heatmap_gg, mean_panel) else list(heatmap_gg)
+  gridExtra::grid.arrange(grobs = overview_grobs, ncol = 1)
+
+  out <- list(heatmap = heatmap_gg, pairs = pair_panels)
+  if (plot_mean) out$mean <- mean_panel
+  invisible(out)
 }

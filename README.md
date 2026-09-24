@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# BayesOmics
+# BayesOmics <a href="https://terenceviellard.github.io/BayesOmics/"><img src="man/figures/logo.png" align="right" height="120" alt="BayesOmics website" /></a>
 
 <!-- badges: start -->
 
@@ -10,7 +10,7 @@
 
 BayesOmics is an R package for Bayesian differential analysis of omics
 data. It places a kernel over the feature dimension (genomic position,
-mass-to-charge ratio, retention time, …) to capture correlation
+mass-to-charge ratio, retention time, â€¦) to capture correlation
 structure, fits that kernel by maximum likelihood, and computes a
 posterior profile per group. Groups are then compared as complete
 multivariate profiles via an overlapping coefficient (OVL), giving a
@@ -21,7 +21,7 @@ single, interpretable differential-analysis statistic per region.
 ## When to use BayesOmics
 
 BayesOmics is designed for datasets where features are not independent
-but share a meaningful ordering or distance along some axis — genomic
+but share a meaningful ordering or distance along some axis â€” genomic
 position, retention time, dose level, time point, m/z ratio, or any
 other continuous covariate. Classical per-feature tests (t-test, limma)
 ignore that structure and multiply the number of comparisons. BayesOmics
@@ -82,17 +82,19 @@ data <- simu_db(nb_id = 25, nb_group = 4, nb_sample = 3, diff_group = 8)
 
 kern         <- variance_kernel(variance = 1) * se_kernel(length_scale = 1)
 control_data <- data[data$Group == 1, ]
-opt          <- optim_hp(kern, control_data,
+opt          <- fit_kernel(kern, control_data,
                          prior_mean = mean(control_data$Output), prior_cov = 1)
 kern         <- do.call(kupdate, c(list(kern), as.list(opt)))
 
 posterior <- posterior_mean(data, kern)
-calculate_group_overlaps(posterior)
-#>              1            2            3            4
-#> 1 1.000000e+00 4.361005e-02 4.870388e-05 3.687700e-09
-#> 2 4.361005e-02 1.000000e+00 3.536288e-02 8.501455e-05
-#> 3 4.870388e-05 3.536288e-02 1.000000e+00 5.908396e-02
-#> 4 3.687700e-09 8.501455e-05 5.908396e-02 1.000000e+00
+group_diff(posterior)
+#> Metric: per_feature_metric(wasserstein_metric(), power = 0.5) 
+#> 
+#>           1         2         3         4
+#> 1  0.000000  6.031284 12.129416 17.615459
+#> 2  6.031284  0.000000  6.264025 11.704798
+#> 3 12.129416  6.264025  0.000000  5.600068
+#> 4 17.615459 11.704798  5.600068  0.000000
 samples   <- sample_posterior(posterior, n = 2000)
 ```
 
@@ -117,7 +119,8 @@ plot_posterior_mean(samples)
 
 | Vignette | What you will find |
 |----|----|
-| `vignette("get-started")` | Data format, kernel choice, step-by-step pipeline, and basic plots — the right place to start. |
-| `vignette("omics-analysis")` | Full worked examples (two-group and multi-group dose-response) with kernel composition, HP interpretation, and every plot function. |
-| `vignette("sample_size_scenarios")` | How unbalanced designs affect posterior width and the OVL, and why the comparison remains valid with unequal sample sizes. |
+| `vignette("get-started")` | Data format, kernel choice, step-by-step pipeline, and basic plots â€” the right place to start. |
+| `vignette("01_basic_pipeline")` | The complete two-group walkthrough - kernel choice, hyperparameter fitting, posterior computation, `group_diff()`. |
+| `vignette("04_multi_group")` | Reading a `group_diff()` matrix and `plot_multi_diff()` output for more than two groups (e.g. a dose-response design). |
+| `vignette("07_unequal_sample_size")` | How unbalanced designs affect posterior width and the OVL, and why the comparison remains valid with unequal sample sizes. |
 | `vignette("troubleshooting")` | Exact error messages you may encounter, what causes each of them, and the targeted fix. |
