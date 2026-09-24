@@ -17,6 +17,76 @@ navbar:
       href: https://github.com/terenceviellard/BayesOmics
       aria-label: GitHub source code
 
+reference:
+  - title: Simulate data
+    contents:
+      - simu_db
+      - simu_db_kernel
+
+  - title: Fit the kernel
+    contents:
+      - fit_kernel
+      - fit_block_posterior
+
+  - title: Posterior
+    contents:
+      - posterior_mean
+      - sample_posterior
+      - get_muk_block
+      - get_sigmak_block
+      - print.bayesomics_posterior
+
+  - title: Differential analysis
+    contents:
+      - group_diff
+      - compute_group_diff
+      - compute_group_diff_samples
+      - compute_multi_diff
+      - calculate_group_overlaps
+      - print.group_diff_result
+
+  - title: Distance metrics
+    contents:
+      - ovl_metric
+      - wasserstein_metric
+      - kl_metric
+      - jeffreys_metric
+      - bhattacharyya_metric
+      - hellinger_metric
+      - mahalanobis_metric
+      - mean_diff_metric
+      - tvd_metric
+      - per_feature_metric
+      - marginal_metric
+      - significant_fraction_metric
+      - energy_metric
+      - mmd_metric
+      - sliced_wasserstein_metric
+      - evaluate_metric
+      - evaluate_sample_metric
+      - requires_shared_kernel
+      - is_symmetric_metric
+
+  - title: Block-diagonal partitioning
+    contents:
+      - partition_by_id
+      - partition_by_range
+      - partition_dbscan
+      - partition_dense
+      - partition_diagonal
+      - partition_from_annotation
+      - resolve_partition
+      - as_block_diag_matrix
+
+  - title: Plots
+    contents:
+      - plot_distrib
+      - plot_distrib_each_pair
+      - plot_group_overlap_heatmap
+      - plot_multi_diff
+      - plot_posterior_mean
+      - plot_posterior_overlap
+
 articles:
   - title: Getting started
     navbar: ~
@@ -25,8 +95,16 @@ articles:
   - title: Analyses
     navbar: Analyses
     contents:
-      - omics-analysis
-      - sample_size_scenarios
+      - 01_basic_pipeline
+      - 02_univariate
+      - 03_pooled_vs_nonpooled
+      - 04_multi_group
+      - 05_metric_choice
+      - 06_kernel_choice
+      - 07_unequal_sample_size
+      - 08_multi_dim_input
+      - 09_block_diagonal
+      - 10_real_data
   - title: Troubleshooting
     navbar: Troubleshooting
     contents:

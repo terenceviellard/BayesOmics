@@ -210,7 +210,7 @@ test_that("sum_logGaussian decreases when kernel fits data better", {
   free0 <- keRnel::get_free_params(kern)
 
   v_init  <- BayesOmics:::sum_logGaussian(free0, data, 0, kern, 1, 1e-6)
-  hp_opt  <- optim_hp(kern, data, 0, 1)
+  hp_opt  <- fit_kernel(kern, data, 0, 1)
   kern_opt <- do.call(keRnel::kupdate, c(list(kern), as.list(hp_opt)))
   free_opt <- keRnel::get_free_params(kern_opt)
   v_opt   <- BayesOmics:::sum_logGaussian(free_opt, data, 0, kern, 1, 1e-6)
@@ -313,84 +313,84 @@ test_that("gr_sum_logGaussian numerical gradient matches analytic gradient", {
   expect_equal(unname(analytic), numeric_grad, tolerance = 1e-3)
 })
 
-# -- optim_hp --------------------------------------------------------
+# -- fit_kernel --------------------------------------------------------
 
-test_that("optim_hp returns named numeric vector by default", {
+test_that("fit_kernel returns named numeric vector by default", {
   data <- make_data()
   kern <- make_kernel()
-  res  <- optim_hp(kern, data, 0, 1)
+  res  <- fit_kernel(kern, data, 0, 1)
   expect_true(is.numeric(res))
   expect_length(res, length(keRnel::get_trainable_params(kern)))
 })
 
-test_that("optim_hp returns full optim list when verbose=TRUE", {
+test_that("fit_kernel returns full optim list when verbose=TRUE", {
   data <- make_data()
   kern <- make_kernel()
-  res  <- optim_hp(kern, data, 0, 1, verbose = TRUE)
+  res  <- fit_kernel(kern, data, 0, 1, verbose = TRUE)
   expect_true(is.list(res))
   expect_true("par" %in% names(res))
   expect_true("convergence" %in% names(res))
   expect_true(inherits(res$kern, "kernel"))
 })
 
-test_that("optim_hp result keeps hyperparameters positive", {
+test_that("fit_kernel result keeps hyperparameters positive", {
   data <- make_data()
   kern <- make_kernel()
-  res  <- optim_hp(kern, data, 0, 1)
+  res  <- fit_kernel(kern, data, 0, 1)
   expect_true(all(res > 0))
 })
 
-test_that("optim_hp errors on wrong kern type", {
+test_that("fit_kernel errors on wrong kern type", {
   data <- make_data()
-  expect_error(optim_hp(list(a = 1), data, 0, 1),
+  expect_error(fit_kernel(list(a = 1), data, 0, 1),
                "keRnel")
 })
 
-test_that("optim_hp errors when db lacks Input/Output", {
+test_that("fit_kernel errors when db lacks Input/Output", {
   kern <- make_kernel()
-  expect_error(optim_hp(kern, data.frame(x = 1:5), 0, 1),
+  expect_error(fit_kernel(kern, data.frame(x = 1:5), 0, 1),
                "Input.*Output|Output.*Input")
 })
 
-test_that("optim_hp errors when db$Input contains NaN", {
+test_that("fit_kernel errors when db$Input contains NaN", {
   data <- make_data()
   kern <- make_kernel()
   data$Input[1] <- NaN
-  expect_error(optim_hp(kern, data, 0, 1), "NaN|Inf|NA")
+  expect_error(fit_kernel(kern, data, 0, 1), "NaN|Inf|NA")
 })
 
-test_that("optim_hp errors when db$Output contains Inf", {
+test_that("fit_kernel errors when db$Output contains Inf", {
   data <- make_data()
   kern <- make_kernel()
   data$Output[1] <- Inf
-  expect_error(optim_hp(kern, data, 0, 1), "NaN|Inf|NA")
+  expect_error(fit_kernel(kern, data, 0, 1), "NaN|Inf|NA")
 })
 
-test_that("optim_hp errors when db$Output contains NA", {
+test_that("fit_kernel errors when db$Output contains NA", {
   data <- make_data()
   kern <- make_kernel()
   data$Output[1] <- NA_real_
-  expect_error(optim_hp(kern, data, 0, 1), "NaN|Inf|NA")
+  expect_error(fit_kernel(kern, data, 0, 1), "NaN|Inf|NA")
 })
 
-test_that("optim_hp errors when prior_mean has wrong length", {
+test_that("fit_kernel errors when prior_mean has wrong length", {
   data <- make_data()
   kern <- make_kernel()
-  expect_error(optim_hp(kern, data, c(1, 2, 3), 1),
+  expect_error(fit_kernel(kern, data, c(1, 2, 3), 1),
                "prior_mean")
 })
 
 test_that("track_trace = FALSE (default) attaches no trace attribute", {
   data <- make_data()
   kern <- make_kernel()
-  res  <- optim_hp(kern, data, 0, 1)
+  res  <- fit_kernel(kern, data, 0, 1)
   expect_null(attr(res, "trace"))
 })
 
 test_that("track_trace = TRUE attaches a trace data.frame with fn and gr rows", {
   data <- make_data()
   kern <- make_kernel()
-  res  <- optim_hp(kern, data, 0, 1, track_trace = TRUE)
+  res  <- fit_kernel(kern, data, 0, 1, track_trace = TRUE)
   tr   <- attr(res, "trace")
   expect_s3_class(tr, "data.frame")
   expect_true(all(c("eval_type", "eval_index", "value", "elapsed_sec") %in% names(tr)))
@@ -401,63 +401,63 @@ test_that("track_trace = TRUE attaches a trace data.frame with fn and gr rows", 
 test_that("track_trace = TRUE does not change the optimized hyperparameters", {
   data <- make_data()
   kern <- make_kernel()
-  res_plain <- optim_hp(kern, data, 0, 1)
-  res_trace <- optim_hp(kern, data, 0, 1, track_trace = TRUE)
+  res_plain <- fit_kernel(kern, data, 0, 1)
+  res_trace <- fit_kernel(kern, data, 0, 1, track_trace = TRUE)
   expect_equal(as.numeric(res_trace), as.numeric(res_plain))
 })
 
 test_that("track_trace = TRUE also populates result$trace when verbose = TRUE", {
   data <- make_data()
   kern <- make_kernel()
-  res  <- optim_hp(kern, data, 0, 1, track_trace = TRUE, verbose = TRUE)
+  res  <- fit_kernel(kern, data, 0, 1, track_trace = TRUE, verbose = TRUE)
   expect_s3_class(res$trace, "data.frame")
 })
 
 test_that("factr and pgtol are accepted and influence convergence speed", {
   data <- make_data(nb_id = 20)
   kern <- make_kernel()
-  res_default <- optim_hp(kern, data, 0, 1, verbose = TRUE)
-  res_loose   <- optim_hp(kern, data, 0, 1, factr = 1e12, pgtol = 1e-2, verbose = TRUE)
+  res_default <- fit_kernel(kern, data, 0, 1, verbose = TRUE)
+  res_loose   <- fit_kernel(kern, data, 0, 1, factr = 1e12, pgtol = 1e-2, verbose = TRUE)
   expect_true(res_loose$counts[1] <= res_default$counts[1])
 })
 
 
-test_that("optim_hp attaches convergence and value as attributes by default", {
+test_that("fit_kernel attaches convergence and value as attributes by default", {
   data <- make_data()
   kern <- make_kernel()
-  res  <- optim_hp(kern, data, 0, 1)
-  full <- optim_hp(kern, data, 0, 1, verbose = TRUE)
+  res  <- fit_kernel(kern, data, 0, 1)
+  full <- fit_kernel(kern, data, 0, 1, verbose = TRUE)
   expect_equal(attr(res, "convergence"), full$convergence)
   expect_equal(attr(res, "value"), full$value)
 })
 
-test_that("optim_hp warns when max_iter is too low to converge", {
+test_that("fit_kernel warns when max_iter is too low to converge", {
   data <- make_data(nb_id = 20)
   kern <- make_kernel(hp = c(0.01, 0.01))
   expect_warning(
-    optim_hp(kern, data, 0, 1, max_iter = 1),
+    fit_kernel(kern, data, 0, 1, max_iter = 1),
     "did not converge"
   )
 })
 
-test_that("optim_hp respects max_iter (stops early instead of fully converging)", {
+test_that("fit_kernel respects max_iter (stops early instead of fully converging)", {
   data <- make_data(nb_id = 20)
   kern <- make_kernel(hp = c(0.01, 0.01))
   res_capped <- suppressWarnings(
-    optim_hp(kern, data, 0, 1, max_iter = 1, verbose = TRUE)
+    fit_kernel(kern, data, 0, 1, max_iter = 1, verbose = TRUE)
   )
-  res_full <- optim_hp(kern, data, 0, 1, verbose = TRUE)
+  res_full <- fit_kernel(kern, data, 0, 1, verbose = TRUE)
   expect_equal(res_capped$convergence, 1)  # 1 = hit the iteration limit (see ?optim)
   expect_true(res_capped$value >= res_full$value)
 })
 
-test_that("optim_hp actually reduces objective vs initial hp", {
+test_that("fit_kernel actually reduces objective vs initial hp", {
   set.seed(5)
   data <- make_data(nb_id = 15)
   kern <- make_kernel()
   free0 <- keRnel::get_free_params(kern)
   v0   <- BayesOmics:::sum_logGaussian(free0, data, 0, kern, 1, 1e-6)
-  hp2  <- optim_hp(kern, data, 0, 1)
+  hp2  <- fit_kernel(kern, data, 0, 1)
   kern2 <- do.call(keRnel::kupdate, c(list(kern), as.list(hp2)))
   v1   <- BayesOmics:::sum_logGaussian(keRnel::get_free_params(kern2), data, 0, kern, 1, 1e-6)
   expect_lte(v1, v0)
@@ -503,7 +503,7 @@ test_that("sum_logGaussian replicated with 1 sample gives finite result (non-rep
   expect_true(is.finite(val))
 })
 
-test_that("optim_hp recovers HPs for replicated data generated with known kernel", {
+test_that("fit_kernel recovers HPs for replicated data generated with known kernel", {
   skip_on_cran()
   set.seed(11)
   kern_true <- keRnel::variance_kernel(variance = 3) * keRnel::se_kernel(length_scale = 5)
@@ -511,7 +511,7 @@ test_that("optim_hp recovers HPs for replicated data generated with known kernel
                                nb_sample = 8, diff_group = 0, var_sample = 1e-4)
   data_rep  <- data_rep[data_rep$Group == "1", ]
   kern_fit  <- make_kernel()
-  hp_opt    <- optim_hp(kern_fit, data_rep, mean(data_rep$Output), 1e-4)
+  hp_opt    <- fit_kernel(kern_fit, data_rep, mean(data_rep$Output), 1e-4)
   expect_equal(unname(hp_opt["variance"]),     3, tolerance = 0.8)
   expect_equal(unname(hp_opt["length_scale"]), 5, tolerance = 2.0)
 })
@@ -579,13 +579,13 @@ test_that("sum_logGaussian branche repliquee declenche pour nb_group > 1, nb_sam
   expect_true(is.finite(val))
 })
 
-test_that("optim_hp converge sur donnees multi-groupes (diff_group = 0)", {
+test_that("fit_kernel converge sur donnees multi-groupes (diff_group = 0)", {
   set.seed(24)
   kern_true <- keRnel::variance_kernel(variance = 2) * keRnel::se_kernel(length_scale = 2)
   data_mg   <- simu_db_kernel(nb_id = 8, nb_group = 3, nb_sample = 4, diff_group = 0,
                                var_sample = 1, kernel = kern_true)
   kern <- make_kernel()
-  res  <- optim_hp(kern, data_mg, prior_mean = 0, prior_cov = 1, verbose = TRUE)
+  res  <- fit_kernel(kern, data_mg, prior_mean = 0, prior_cov = 1, verbose = TRUE)
   expect_equal(res$convergence, 0)
   expect_true(all(is.finite(res$par)))
 })
@@ -616,7 +616,7 @@ test_that("chol_inv_jitter with pen_diag = 0 bumps to 1e-6 only once jitter is n
   expect_no_error(BayesOmics:::chol_inv_jitter(singular_mat, pen_diag = 0))
 })
 
-test_that("optim_hp recovers hyperparameters on every well-behaved kernel family", {
+test_that("fit_kernel recovers hyperparameters on every well-behaved kernel family", {
   # Smoke test only (runs without error, gives finite positive output) --
   # not a tight RMSE tolerance, see optim_exploration/07_kernel_family_zoo.R
   # for the full Monte-Carlo recovery study. All families listed here are
@@ -642,7 +642,7 @@ test_that("optim_hp recovers hyperparameters on every well-behaved kernel family
     data <- simu_db_kernel(nb_id = 8, nb_group = 1, nb_sample = 5, diff_group = 0,
                             var_sample = 0.5, kernel = kern, range_input = c(0, 10))
     data <- data[data$Group == "1", ]
-    res <- optim_hp(kern, data, mean(data$Output), prior_cov = 0.5, pen_diag = 1e-3)
+    res <- fit_kernel(kern, data, mean(data$Output), prior_cov = 0.5, pen_diag = 1e-3)
     expect_true(all(is.finite(res)), info = kname)
   }
 })
@@ -719,7 +719,7 @@ test_that("gr_sum_logGaussian analytic gradient matches numerical gradient (D = 
   expect_equal(unname(analytic), numeric_grad, tolerance = 1e-3)
 })
 
-test_that("optim_hp fits a genuinely multi-dimensional (D = 2) isotropic kernel", {
+test_that("fit_kernel fits a genuinely multi-dimensional (D = 2) isotropic kernel", {
   skip_on_cran()
   set.seed(62)
   ids <- paste0("ID_", 1:10)
@@ -736,13 +736,13 @@ test_that("optim_hp fits a genuinely multi-dimensional (D = 2) isotropic kernel"
     )
   }))
   kern_fit <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
-  res <- optim_hp(kern_fit, long, mean(long$Output), 1e-4)
+  res <- fit_kernel(kern_fit, long, mean(long$Output), 1e-4)
   expect_true(all(is.finite(res)))
   expect_equal(unname(res["variance"]), 2, tolerance = 1.5)
   expect_equal(unname(res["length_scale"]), 3, tolerance = 2.0)
 })
 
-test_that("optim_hp fits two sibling sub-kernels sharing a bare hyperparameter name independently", {
+test_that("fit_kernel fits two sibling sub-kernels sharing a bare hyperparameter name independently", {
   # The direct validation of the free-space-gradient design: kupdate() cannot
   # give se_kernel(length_scale=1) + se_kernel(length_scale=3) two different
   # starting values that stay independent during optimization (it updates
@@ -754,7 +754,7 @@ test_that("optim_hp fits two sibling sub-kernels sharing a bare hyperparameter n
   data <- make_data(nb_id = 25, nb_sample = 6)
   data <- data[data$Group == "1", ]
   kern <- keRnel::se_kernel(length_scale = 1) + keRnel::se_kernel(length_scale = 8)
-  res  <- optim_hp(kern, data, mean(data$Output), 1)
+  res  <- fit_kernel(kern, data, mean(data$Output), 1)
   expect_length(res, 2)
   expect_true(all(is.finite(res)))
   expect_gt(abs(res[1] - res[2]), 1e-6)
@@ -785,56 +785,56 @@ test_that("demean_by_group_and_id centers each (group, id) cell on its own mean,
   expect_true(is.vector(res$output))
 })
 
-test_that("optim_hp requires prior_mean unless group_col is supplied", {
+test_that("fit_kernel requires prior_mean unless group_col is supplied", {
   data <- make_data(nb_id = 5, nb_group = 2, nb_sample = 3)
   kern <- make_kernel()
-  expect_error(optim_hp(kern, data, prior_cov = 1), "prior_mean.*required")
+  expect_error(fit_kernel(kern, data, prior_cov = 1), "prior_mean.*required")
 })
 
-test_that("optim_hp errors when group_col is not a column of db", {
+test_that("fit_kernel errors when group_col is not a column of db", {
   data <- make_data(nb_id = 5, nb_group = 2, nb_sample = 3)
   kern <- make_kernel()
   expect_error(
-    optim_hp(kern, data, prior_cov = 1, group_col = "NotAColumn"),
+    fit_kernel(kern, data, prior_cov = 1, group_col = "NotAColumn"),
     "not a column"
   )
 })
 
-test_that("optim_hp errors when group_col is supplied but db has no ID column", {
+test_that("fit_kernel errors when group_col is supplied but db has no ID column", {
   data <- make_data(nb_id = 5, nb_group = 2, nb_sample = 3)
   data$ID <- NULL
   kern <- make_kernel()
   expect_error(
-    optim_hp(kern, data, prior_cov = 1, group_col = "Group"),
+    fit_kernel(kern, data, prior_cov = 1, group_col = "Group"),
     "'ID' column"
   )
 })
 
-test_that("optim_hp warns when a nonzero prior_mean is supplied alongside group_col", {
+test_that("fit_kernel warns when a nonzero prior_mean is supplied alongside group_col", {
   skip_on_cran()
   set.seed(70)
   data <- make_data(nb_id = 5, nb_group = 2, nb_sample = 3)
   kern <- make_kernel()
   expect_warning(
-    optim_hp(kern, data, prior_mean = 5, prior_cov = 1, group_col = "Group"),
+    fit_kernel(kern, data, prior_mean = 5, prior_cov = 1, group_col = "Group"),
     "ignored"
   )
   # prior_mean = 0 alongside group_col is the documented no-op case: no warning.
   expect_warning(
-    optim_hp(kern, data, prior_mean = 0, prior_cov = 1, group_col = "Group"),
+    fit_kernel(kern, data, prior_mean = 0, prior_cov = 1, group_col = "Group"),
     NA
   )
 })
 
-test_that("optim_hp(group_col=...) internally demeans and applies n_groups (matches the manual equivalent)", {
+test_that("fit_kernel(group_col=...) internally demeans and applies n_groups (matches the manual equivalent)", {
   skip_on_cran()
   set.seed(71)
   data <- make_data(nb_id = 6, nb_group = 3, nb_sample = 4)
   kern <- make_kernel(hp = c(1.5, 2.0))
 
-  res_grouped <- optim_hp(kern, data, prior_cov = 1, group_col = "Group", verbose = TRUE)
+  res_grouped <- fit_kernel(kern, data, prior_cov = 1, group_col = "Group", verbose = TRUE)
 
-  # Re-evaluate the NLL that optim_hp() must have minimized, by reproducing
+  # Re-evaluate the NLL that fit_kernel() must have minimized, by reproducing
   # its two documented steps by hand: demean_by_group_and_id() then n_groups = G.
   demeaned    <- BayesOmics:::demean_by_group_and_id(data$Output, data$Group, data$ID)
   data_manual <- data
@@ -894,7 +894,7 @@ test_that("gr_sum_logGaussian REML correction: analytic gradient matches numeric
   expect_gt(max(abs(analytic - analytic_no_reml)), 1e-2)
 })
 
-test_that("optim_hp(group_col=...) recovers kernel variance closer to truth than naive pooling under a group mean shift", {
+test_that("fit_kernel(group_col=...) recovers kernel variance closer to truth than naive pooling under a group mean shift", {
   skip_on_cran()
   set.seed(74)
   kern_true <- keRnel::variance_kernel(variance = 3) * keRnel::se_kernel(length_scale = 20)
@@ -903,13 +903,13 @@ test_that("optim_hp(group_col=...) recovers kernel variance closer to truth than
                           range_input = c(0, 150), integer_input = TRUE)
 
   kern_fit <- make_kernel()
-  hp_naive   <- optim_hp(kern_fit, data, prior_mean = mean(data$Output), prior_cov = 1e-6)
-  hp_grouped <- optim_hp(kern_fit, data, prior_cov = 1e-6, group_col = "Group")
+  hp_naive   <- fit_kernel(kern_fit, data, prior_mean = mean(data$Output), prior_cov = 1e-6)
+  hp_grouped <- fit_kernel(kern_fit, data, prior_cov = 1e-6, group_col = "Group")
 
   expect_true(abs(unname(hp_grouped["variance"]) - 3) < abs(unname(hp_naive["variance"]) - 3))
 })
 
-test_that("optim_hp(group_col=...) is not contaminated by a NON-uniform between-group shift pattern", {
+test_that("fit_kernel(group_col=...) is not contaminated by a NON-uniform between-group shift pattern", {
   # Regression test for the bug demean_by_group_and_id() fixes: a uniform
   # shift (diff_group = scalar, every id shifted identically -- the case
   # covered by the test above) was already handled correctly by the OLD
@@ -934,7 +934,114 @@ test_that("optim_hp(group_col=...) is not contaminated by a NON-uniform between-
   data$Output[rows] <- data$Output[rows] + shift[data$ID[rows]]
 
   kern_fit   <- make_kernel()
-  hp_grouped <- optim_hp(kern_fit, data, prior_cov = 1, group_col = "Group")
+  hp_grouped <- fit_kernel(kern_fit, data, prior_cov = 1, group_col = "Group")
 
   expect_true(abs(unname(hp_grouped["variance"]) - 1) < 1)
+})
+
+# -- pooled = FALSE (real kernel): independent per-group fit ------------------
+
+test_that("fit_kernel(pooled = FALSE) returns a named list, one independent fit per group", {
+  data <- make_data(nb_id = 6, nb_group = 3, nb_sample = 4)
+  kern <- make_kernel()
+  fits <- fit_kernel(kern, data, prior_mean = 0, prior_cov = 1,
+                     group_col = "Group", pooled = FALSE)
+  expect_true(is.list(fits) && !inherits(fits, "kernel"))
+  expect_setequal(names(fits), unique(as.character(data$Group)))
+  for (f in fits) {
+    expect_true(is.numeric(f))
+    expect_length(f, length(keRnel::get_trainable_params(kern)))
+  }
+})
+
+test_that("fit_kernel(pooled = FALSE, verbose = TRUE) gives each group its own fitted kernel object", {
+  data <- make_data(nb_id = 6, nb_group = 2, nb_sample = 4)
+  kern <- make_kernel()
+  fits <- fit_kernel(kern, data, prior_mean = 0, prior_cov = 1,
+                     group_col = "Group", pooled = FALSE, verbose = TRUE)
+  expect_setequal(names(fits), c("1", "2"))
+  expect_true(inherits(fits[["1"]]$kern, "kernel"))
+  expect_true(inherits(fits[["2"]]$kern, "kernel"))
+})
+
+test_that("fit_kernel(pooled = FALSE) recovers genuinely different HPs per group without demeaning them away", {
+  skip_on_cran()
+  set.seed(80)
+  nb_id <- 12
+  ids <- paste0("ID_", seq_len(nb_id))
+  positions <- matrix(sort(runif(nb_id, 0, 20)), ncol = 1)
+  rownames(positions) <- ids
+  kern_A <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 2)
+  kern_B <- keRnel::variance_kernel(variance = 5) * keRnel::se_kernel(length_scale = 8)
+  make_group <- function(kern_true, label) {
+    Sigma <- keRnel::evaluate(kern_true, positions, positions) + 0.2 * diag(nb_id)
+    L <- t(chol(Sigma))
+    do.call(rbind, lapply(seq_len(10), function(s) {
+      y <- as.vector(L %*% rnorm(nb_id))
+      data.frame(ID = ids, Group = label, Sample = s, Input = positions[, 1], Output = y)
+    }))
+  }
+  data <- rbind(make_group(kern_A, "A"), make_group(kern_B, "B"))
+  kern_template <- keRnel::variance_kernel(variance = 1) * keRnel::se_kernel(length_scale = 1)
+
+  fits <- fit_kernel(kern_template, data, prior_mean = 0, prior_cov = 0.2,
+                     group_col = "Group", pooled = FALSE)
+  # Non-demeaned, per-group fits should land near each group's OWN truth --
+  # not collapse toward a common (wrong) value the way demeaning would.
+  expect_equal(unname(fits$A["length_scale"]), 2, tolerance = 2)
+  expect_equal(unname(fits$B["length_scale"]), 8, tolerance = 3)
+  expect_gt(unname(fits$B["length_scale"]), unname(fits$A["length_scale"]))
+})
+
+test_that("fit_kernel(pooled = FALSE) output feeds directly into posterior_mean() with distinct kernel_keys", {
+  set.seed(81)
+  data <- make_data(nb_id = 6, nb_group = 2, nb_sample = 4)
+  kern <- make_kernel()
+  fits <- lapply(
+    fit_kernel(kern, data, prior_mean = 0, prior_cov = 1,
+              group_col = "Group", pooled = FALSE, verbose = TRUE),
+    function(f) f$kern
+  )
+  posterior <- posterior_mean(data, kern = fits)
+  expect_false(posterior$groups[["1"]]$kernel_key == posterior$groups[["2"]]$kernel_key)
+})
+
+# -- fit_kernel(kern = NULL): unified closed-form path -------------------------
+
+test_that("fit_kernel(kern = NULL) matches posterior_mean()'s own closed-form fit (univariate mode)", {
+  set.seed(82)
+  cpg <- data.frame(
+    Group  = rep(c("A", "B"), each = 8),
+    Output = c(rnorm(8, 0, 1), rnorm(8, 3, 1))
+  )
+  fk_pooled  <- suppressWarnings(fit_kernel(NULL, cpg, pooled = TRUE))
+  fk_nonpool <- suppressWarnings(fit_kernel(NULL, cpg, pooled = FALSE))
+  expect_true(inherits(fk_pooled, "kernel"))
+  expect_true(is.list(fk_nonpool) && !inherits(fk_nonpool, "kernel"))
+  expect_setequal(names(fk_nonpool), c("A", "B"))
+
+  post_direct <- suppressWarnings(posterior_mean(cpg, kern = NULL, pooled = FALSE))
+  post_via_fk <- suppressWarnings(posterior_mean(cpg, kern = fk_nonpool))
+  expect_equal(post_direct$groups$A$muk, post_via_fk$groups$A$muk, ignore_attr = TRUE)
+  expect_equal(unclass(post_direct$kernels[[1]]), unclass(post_via_fk$kernels[[1]]),
+               ignore_attr = TRUE)
+})
+
+test_that("fit_kernel(kern = NULL) also works in multivariate mode (real ID/Input present)", {
+  set.seed(83)
+  data <- make_data(nb_id = 6, nb_group = 2, nb_sample = 4)
+  fk <- fit_kernel(NULL, data, pooled = TRUE)
+  expect_true(inherits(fk, "kernel"))
+  posterior <- posterior_mean(data, kern = fk)
+  expect_length(posterior$groups, 2)
+})
+
+test_that("fit_kernel errors when both ID and Input are supplied for kern = NULL but only one is present", {
+  data <- make_data(nb_id = 5, nb_group = 2, nb_sample = 3)
+  data$Input <- NULL
+  expect_error(fit_kernel(NULL, data, pooled = TRUE), "one of 'ID'/'Input'")
+})
+
+test_that("fit_kernel(kern = NULL) still requires Group and Output columns", {
+  expect_error(fit_kernel(NULL, data.frame(x = 1:5), pooled = TRUE), "Group")
 })

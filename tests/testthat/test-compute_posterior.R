@@ -25,6 +25,19 @@ test_that("posterior_mean errors on non-kernel argument", {
   expect_error(posterior_mean(data, list()), "keRnel")
 })
 
+test_that("posterior_mean accepts a named list of kernels (one per group), giving each its own kernel_key", {
+  data <- make_data(nb_id = 5, nb_group = 2, nb_sample = 3)
+  kern_by_group <- list("1" = make_kernel(c(1, 1)), "2" = make_kernel(c(3, 3)))
+  posterior <- posterior_mean(data, kern = kern_by_group)
+  expect_false(posterior$groups[["1"]]$kernel_key == posterior$groups[["2"]]$kernel_key)
+})
+
+test_that("posterior_mean errors when the named-list kern is missing an entry for a group in data", {
+  data <- make_data(nb_id = 5, nb_group = 2, nb_sample = 3)
+  kern_by_group <- list("1" = make_kernel())
+  expect_error(posterior_mean(data, kern = kern_by_group), "missing an entry")
+})
+
 test_that("posterior_mean errors when lambda_0 <= 0", {
   data <- make_data()
   kern <- make_kernel()
@@ -418,7 +431,7 @@ test_that("posterior_mean pooled = TRUE shares one kernel_key across groups, poo
   expect_length(unique(keys_unpooled), 3)
 })
 
-test_that("posterior_mean pooled = FALSE: ovl_metric() refuses to compare groups, other metrics still work", {
+test_that("posterior_mean pooled = FALSE: ovl_metric() falls back to a Monte Carlo estimate, other metrics still work", {
   set.seed(3)
   cpg <- data.frame(
     Group  = rep(c("A", "B"), each = 6),
@@ -426,7 +439,8 @@ test_that("posterior_mean pooled = FALSE: ovl_metric() refuses to compare groups
     Output = c(rnorm(6, 0, 1), rnorm(6, 3, 4))
   )
   post <- suppressWarnings(posterior_mean(cpg, pooled = FALSE))
-  expect_error(compute_group_diff(post, ovl_metric()), "kernel matrix")
+  ovl <- compute_group_diff(post, ovl_metric())["A", "B"]
+  expect_true(ovl >= 0 && ovl <= 1)
   d <- compute_group_diff(post, mahalanobis_metric())
   expect_equal(dim(d), c(2L, 2L))
 })

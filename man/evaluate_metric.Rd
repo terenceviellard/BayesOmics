@@ -57,8 +57,10 @@ their posterior covariances (from the internal \code{get_sigmak()} helper), \cod
 the \code{n_obs + lambda_0} divisors from \code{\link{posterior_mean}},
 and \code{same_kernel} whether the two groups share the same \code{kernel_key}.}
 \item{\code{requires_shared_kernel(metric)}}{\code{TRUE} if the metric has
-no valid formula unless the two groups share the same \code{kernel_key}
-(only \code{\link{ovl_metric}}). Defaults to \code{FALSE}.}
+no valid formula at all unless the two groups share the same
+\code{kernel_key} (no metric here needs this -- \code{\link{ovl_metric}}
+instead switches internally to a Monte Carlo/KDE fallback when they
+don't, see its own documentation). Defaults to \code{FALSE}.}
 \item{\code{is_symmetric_metric(metric)}}{\code{TRUE} if swapping the two
 groups never changes the value (\code{\link{kl_metric}} and
 \code{\link{mahalanobis_metric}} are not -- the latter is evaluated
