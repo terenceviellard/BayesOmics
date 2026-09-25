@@ -11,5 +11,5 @@
 ^_pkgdown\.yml$
 ^pkgdown$
 ^docs$
-^CLAUDE\.md$
+^\.claude$
 ^CITATION\.cff$
