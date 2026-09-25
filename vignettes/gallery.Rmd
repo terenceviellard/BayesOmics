@@ -1,0 +1,55 @@
+---
+title: "Gallery"
+description: "The key figures of the package at a glance, each linking to the article that explains it."
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Gallery}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+Click a figure to open the article where it is built and explained.
+
+<div class="row g-3">
+
+<div class="col-md-6">
+<a href="01_basic_pipeline.html"><img class="img-fluid" src="figures/gallery_replicates.png" alt="Replicate curves of two groups"></a>
+<p><strong>Replicates by group</strong><br>Raw data, one line per replicate. <a href="01_basic_pipeline.html">Basic pipeline</a></p>
+</div>
+
+<div class="col-md-6">
+<a href="01_basic_pipeline.html"><img class="img-fluid" src="figures/gallery_overlap.png" alt="Overlap of two posterior densities for one feature"></a>
+<p><strong>Posterior overlap, one feature</strong><br>The shaded area is the OVL. <a href="01_basic_pipeline.html">Basic pipeline</a></p>
+</div>
+
+<div class="col-md-6">
+<a href="01_basic_pipeline.html"><img class="img-fluid" src="figures/gallery_multi_diff.png" alt="Distribution of the number of features where group 1 exceeds group 2, with posterior means"></a>
+<p><strong>How many features differ?</strong><br>Two-group summary with posterior means. <a href="01_basic_pipeline.html">Basic pipeline</a></p>
+</div>
+
+<div class="col-md-6">
+<a href="05_multi_group.html"><img class="img-fluid" src="figures/gallery_multigroup_heatmap.png" alt="Pairwise overlap heatmap for four groups"></a>
+<p><strong>Four groups at a glance</strong><br>Pairwise overlap heatmap. <a href="05_multi_group.html">More than two groups</a></p>
+</div>
+
+<div class="col-md-6">
+<a href="06_metric_choice.html"><img class="img-fluid" src="figures/06_metric_choice_curve.png" alt="OVL and normalised Wasserstein as the number of features grows"></a>
+<p><strong>OVL vs. Wasserstein</strong><br>Same effect, growing number of features. <a href="06_metric_choice.html">Choosing a metric</a></p>
+</div>
+
+<div class="col-md-6">
+<a href="03_real_data.html"><img class="img-fluid" src="figures/gallery_real_data.png" alt="Individual chick growth curves by diet"></a>
+<p><strong>Real data</strong><br>Chick growth by diet, reshaped into the long format. <a href="03_real_data.html">Real data</a></p>
+</div>
+
+<div class="col-md-6">
+<a href="09_multi_dim_input.html"><img class="img-fluid" src="figures/gallery_kronecker.png" alt="Kronecker product of two one-dimensional kernel matrices"></a>
+<p><strong>A 2D kernel as a Kronecker product</strong><br>Why multi-dimensional inputs need no new code. <a href="09_multi_dim_input.html">Multi-dimensional input</a></p>
+</div>
+
+<div class="col-md-6">
+<a href="10_block_diagonal.html"><img class="img-fluid" src="figures/gallery_block_sparsity.png" alt="Block-diagonal covariance matrix"></a>
+<p><strong>Block-diagonal covariance</strong><br>What splitting into blocks gives up, and gains. <a href="10_block_diagonal.html">Block-diagonal partition</a></p>
+</div>
+
+</div>

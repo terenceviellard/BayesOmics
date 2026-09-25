@@ -1,8 +1,9 @@
 ---
-title: "Working from real data instead of a simulation"
+title: "03 · Working from real data instead of a simulation"
+description: "Turn your own dataset into the BayesOmics long format, with a ready-to-use AI prompt."
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Working from real data instead of a simulation}
+  %\VignetteIndexEntry{03 · Working from real data instead of a simulation}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -168,5 +169,4 @@ Please write R code (base R or dplyr/tidyr, whichever is cleaner) that:
 
 ## Related
 
-*Choosing a metric: OVL vs. Wasserstein* -- *Comparing groups with different
-sample sizes*.
+[Choosing a metric: OVL vs. Wasserstein](06_metric_choice.html) -- [Comparing groups with different sample sizes](07_unequal_sample_size.html).

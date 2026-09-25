@@ -1,8 +1,9 @@
 ---
-title: "Using a kernel other than Squared Exponential"
+title: "08 · Using a kernel other than Squared Exponential"
+description: "Beyond the Squared Exponential kernel: choosing and composing other kernels."
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Using a kernel other than Squared Exponential}
+  %\VignetteIndexEntry{08 · Using a kernel other than Squared Exponential}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -125,4 +126,4 @@ this pattern regardless of its length scale.
 
 ## Related
 
-*Basic pipeline* -- *Input with two dimensions*.
+[Basic pipeline](01_basic_pipeline.html) -- [Input with more than one dimension](09_multi_dim_input.html).

@@ -1,8 +1,9 @@
 ---
-title: "Comparing more than two groups"
+title: "05 · Comparing more than two groups"
+description: "Read a pairwise matrix and the multi-group overview plot for three or more groups."
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Comparing more than two groups}
+  %\VignetteIndexEntry{05 · Comparing more than two groups}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -119,5 +120,4 @@ every other pair leans toward one extreme, matching the heatmap above.
 
 ## Related
 
-*Basic pipeline* -- *Pooled vs. non-pooled fitting* -- *Analysis with a
-block-diagonal partition* (for many features across many groups).
+[Basic pipeline](01_basic_pipeline.html) -- [Pooled vs. non-pooled fitting](04_pooled_vs_nonpooled.html) -- [Scaling up with a block-diagonal partition](10_block_diagonal.html) (for many features across many groups).
