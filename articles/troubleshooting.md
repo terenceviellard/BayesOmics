@@ -93,10 +93,10 @@ method returning `TRUE`;
 then errors for that metric specifically when the two groups don’t share
 a kernel matrix, with no fallback.
 
-See
-[`vignette("03_pooled_vs_nonpooled")`](https://terenceviellard.github.io/BayesOmics/articles/03_pooled_vs_nonpooled.md)
-for when `pooled = FALSE` produces this on purpose, and
-[`vignette("05_metric_choice")`](https://terenceviellard.github.io/BayesOmics/articles/05_metric_choice.md)
+See [04 Pooled
+vs. non-pooled](https://terenceviellard.github.io/BayesOmics/articles/04_pooled_vs_nonpooled.md)
+for when `pooled = FALSE` produces this on purpose, and [06 Choosing a
+metric](https://terenceviellard.github.io/BayesOmics/articles/06_metric_choice.md)
 for why the OVL fallback exists and its accuracy/cost tradeoff in more
 detail.
 
@@ -154,8 +154,8 @@ same number of replicate samples.
 
 **Fix:** make sure every ID in a group has the same number of `Sample`
 rows – e.g. by filling in missing replicates or subsetting to a balanced
-design. See
-[`vignette("07_unequal_sample_size")`](https://terenceviellard.github.io/BayesOmics/articles/07_unequal_sample_size.md)
+design. See [07 Unequal sample
+sizes](https://terenceviellard.github.io/BayesOmics/articles/07_unequal_sample_size.md)
 for designs with different replicate counts *across* groups (which is
 supported), as opposed to across IDs *within* the same group (which is
 not).
@@ -186,13 +186,13 @@ e.g. `data <- droplevels(data[data$Group %in% kept_groups, ])`.
 
 | Vignette | What you will find |
 |----|----|
-| [`vignette("01_basic_pipeline")`](https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.md) | The complete two-group walkthrough – kernel choice, hyperparameter fitting, posterior computation, [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md). Start here for the full model pipeline. |
-| [`vignette("02_univariate")`](https://terenceviellard.github.io/BayesOmics/articles/02_univariate.md) | Comparing two groups with no feature axis at all (a single scalar per replicate). |
-| [`vignette("03_pooled_vs_nonpooled")`](https://terenceviellard.github.io/BayesOmics/articles/03_pooled_vs_nonpooled.md) | Fitting one shared kernel vs. one independent kernel per group – and exactly when that makes two groups stop sharing a kernel matrix (see above). |
-| [`vignette("04_multi_group")`](https://terenceviellard.github.io/BayesOmics/articles/04_multi_group.md) | Reading a [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md) matrix and [`plot_multi_diff()`](https://terenceviellard.github.io/BayesOmics/reference/plot_multi_diff.md) output for more than two groups. |
-| [`vignette("05_metric_choice")`](https://terenceviellard.github.io/BayesOmics/articles/05_metric_choice.md) | Why the joint OVL saturates as the number of features grows, when to prefer per-feature Wasserstein instead, and the logic [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md) automates. |
-| [`vignette("06_kernel_choice")`](https://terenceviellard.github.io/BayesOmics/articles/06_kernel_choice.md) | Choosing a kernel other than Squared Exponential. |
-| [`vignette("07_unequal_sample_size")`](https://terenceviellard.github.io/BayesOmics/articles/07_unequal_sample_size.md) | How unbalanced designs (different replicate counts *per group*) affect posterior width and the final comparison, and why it remains valid even with strongly unequal counts. |
-| [`vignette("08_multi_dim_input")`](https://terenceviellard.github.io/BayesOmics/articles/08_multi_dim_input.md) | `Input` with more than one dimension (`Input_ID`), and why the fit code needs no change. |
-| [`vignette("09_block_diagonal")`](https://terenceviellard.github.io/BayesOmics/articles/09_block_diagonal.md) | Scaling up to many features via a block-diagonal partition ([`fit_block_posterior()`](https://terenceviellard.github.io/BayesOmics/reference/fit_block_posterior.md)). |
-| [`vignette("10_real_data")`](https://terenceviellard.github.io/BayesOmics/articles/10_real_data.md) | Reshaping a real dataset (not a simulation) into the BayesOmics long format, including a ready-to-use AI-assistant prompt. |
+| [01 Basic pipeline](https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.md) | The complete two-group walkthrough – kernel choice, hyperparameter fitting, posterior computation, [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md). Start here for the full model pipeline. |
+| [02 Univariate mode](https://terenceviellard.github.io/BayesOmics/articles/02_univariate.md) | Comparing two groups with no feature axis at all (a single scalar per replicate). |
+| [04 Pooled vs. non-pooled](https://terenceviellard.github.io/BayesOmics/articles/04_pooled_vs_nonpooled.md) | Fitting one shared kernel vs. one independent kernel per group – and exactly when that makes two groups stop sharing a kernel matrix (see above). |
+| [05 More than two groups](https://terenceviellard.github.io/BayesOmics/articles/05_multi_group.md) | Reading a [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md) matrix and [`plot_multi_diff()`](https://terenceviellard.github.io/BayesOmics/reference/plot_multi_diff.md) output for more than two groups. |
+| [06 Choosing a metric](https://terenceviellard.github.io/BayesOmics/articles/06_metric_choice.md) | Why the joint OVL saturates as the number of features grows, when to prefer per-feature Wasserstein instead, and the logic [`group_diff()`](https://terenceviellard.github.io/BayesOmics/reference/group_diff.md) automates. |
+| [08 Kernel choice](https://terenceviellard.github.io/BayesOmics/articles/08_kernel_choice.md) | Choosing a kernel other than Squared Exponential. |
+| [07 Unequal sample sizes](https://terenceviellard.github.io/BayesOmics/articles/07_unequal_sample_size.md) | How unbalanced designs (different replicate counts *per group*) affect posterior width and the final comparison, and why it remains valid even with strongly unequal counts. |
+| [09 Multi-dimensional input](https://terenceviellard.github.io/BayesOmics/articles/09_multi_dim_input.md) | `Input` with more than one dimension (`Input_ID`), and why the fit code needs no change. |
+| [10 Block-diagonal partition](https://terenceviellard.github.io/BayesOmics/articles/10_block_diagonal.md) | Scaling up to many features via a block-diagonal partition ([`fit_block_posterior()`](https://terenceviellard.github.io/BayesOmics/reference/fit_block_posterior.md)). |
+| [03 Real data](https://terenceviellard.github.io/BayesOmics/articles/03_real_data.md) | Reshaping a real dataset (not a simulation) into the BayesOmics long format, including a ready-to-use AI-assistant prompt. |

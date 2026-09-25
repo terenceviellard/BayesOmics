@@ -1,4 +1,4 @@
-# Basic pipeline: comparing two groups with a spatial kernel
+# 01 · Basic pipeline: comparing two groups with a spatial kernel
 
 ``` r
 
@@ -144,5 +144,9 @@ but the same direction of effect on nearly every feature.
 
 ## Related
 
-*Univariate mode* (no covariate at all) – *Pooled vs. non-pooled
-fitting* (one kernel per group) – *Comparing more than two groups*.
+[Univariate
+mode](https://terenceviellard.github.io/BayesOmics/articles/02_univariate.md)
+(no covariate at all) – [Pooled vs. non-pooled
+fitting](https://terenceviellard.github.io/BayesOmics/articles/04_pooled_vs_nonpooled.md)
+(one kernel per group) – [Comparing more than two
+groups](https://terenceviellard.github.io/BayesOmics/articles/05_multi_group.md).

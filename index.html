@@ -13,9 +13,11 @@
 <link rel="manifest" href="site.webmanifest">
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/Inter-0.4.10/font.css" rel="stylesheet">
+<link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="BayesOmics">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><link href="extra.css" rel="stylesheet">
+<meta property="og:title" content="BayesOmics">
 <meta name="description" content="Bayesian Differential Analysis for Omics Data">
 <meta property="og:description" content="Bayesian Differential Analysis for Omics Data">
 <meta property="og:image" content="https://terenceviellard.github.io/BayesOmics/logo.png">
@@ -37,22 +39,33 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
+<li class="nav-item"><a class="nav-link" href="articles/01_basic_pipeline.html">Get started</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/get-started.html">Get started with BayesOmics</a></li>
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Start here</h6></li>
+    <li><a class="dropdown-item" href="articles/concepts.html">Concepts: the model in one page</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Analyses</h6></li>
-    <li><a class="dropdown-item" href="articles/01_basic_pipeline.html">Basic pipeline: comparing two groups with a spatial kernel</a></li>
-    <li><a class="dropdown-item" href="articles/02_univariate.html">Univariate mode: comparing two groups with no feature axis</a></li>
-    <li><a class="dropdown-item" href="articles/03_pooled_vs_nonpooled.html">Pooled vs. non-pooled: one kernel for every group, or one per group</a></li>
-    <li><a class="dropdown-item" href="articles/04_multi_group.html">Comparing more than two groups</a></li>
-    <li><a class="dropdown-item" href="articles/05_metric_choice.html">Choosing a metric: OVL vs. Wasserstein</a></li>
-    <li><a class="dropdown-item" href="articles/06_kernel_choice.html">Using a kernel other than Squared Exponential</a></li>
-    <li><a class="dropdown-item" href="articles/07_unequal_sample_size.html">Comparing groups with different sample sizes</a></li>
-    <li><a class="dropdown-item" href="articles/08_multi_dim_input.html">Input with more than one dimension</a></li>
-    <li><a class="dropdown-item" href="articles/09_block_diagonal.html">Scaling up with a block-diagonal partition</a></li>
-    <li><a class="dropdown-item" href="articles/10_real_data.html">Working from real data instead of a simulation</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Beginner</h6></li>
+    <li><a class="dropdown-item" href="articles/01_basic_pipeline.html">01 · Basic pipeline: comparing two groups with a spatial kernel</a></li>
+    <li><a class="dropdown-item" href="articles/02_univariate.html">02 · Univariate mode: comparing two groups with no feature axis</a></li>
+    <li><a class="dropdown-item" href="articles/03_real_data.html">03 · Working from real data instead of a simulation</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Intermediate</h6></li>
+    <li><a class="dropdown-item" href="articles/04_pooled_vs_nonpooled.html">04 · Pooled vs. non-pooled: one kernel for every group, or one per group</a></li>
+    <li><a class="dropdown-item" href="articles/05_multi_group.html">05 · Comparing more than two groups</a></li>
+    <li><a class="dropdown-item" href="articles/06_metric_choice.html">06 · Choosing a metric: OVL vs. Wasserstein</a></li>
+    <li><a class="dropdown-item" href="articles/07_unequal_sample_size.html">07 · Comparing groups with different sample sizes</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="articles/08_kernel_choice.html">08 · Using a kernel other than Squared Exponential</a></li>
+    <li><a class="dropdown-item" href="articles/09_multi_dim_input.html">09 · Input with more than one dimension</a></li>
+    <li><a class="dropdown-item" href="articles/10_block_diagonal.html">10 · Scaling up with a block-diagonal partition</a></li>
+    <li><a class="dropdown-item" href="articles/11_performance.html">11 · Performance at a glance</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Gallery</h6></li>
+    <li><a class="dropdown-item" href="articles/gallery.html">Gallery</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Troubleshooting</h6></li>
     <li><a class="dropdown-item" href="articles/troubleshooting.html">Troubleshooting: common errors and how to fix them</a></li>
@@ -77,12 +90,12 @@
 </div>
 <!-- badges: start -->
 
-<p>BayesOmics is an R package for Bayesian differential analysis of omics data. It places a kernel over the feature dimension (genomic position, mass-to-charge ratio, retention time, â€¦) to capture correlation structure, fits that kernel by maximum likelihood, and computes a posterior profile per group. Groups are then compared as complete multivariate profiles via an overlapping coefficient (OVL), giving a single, interpretable differential-analysis statistic per region.</p>
-<p><img src="reference/figures/pipeline.png" alt="BayesOmics pipeline: simulate/load data, optimize kernel hyperparameters, compute posterior per group, differential analysis (OVL)" width="100%"></p>
+<p>BayesOmics is an R package for Bayesian differential analysis of omics data. It places a kernel over the feature dimension (genomic position, mass-to-charge ratio, retention time, …) to capture correlation structure, fits that kernel by maximum likelihood, and computes a posterior profile per group. Groups are then compared as complete multivariate profiles via an overlapping coefficient (OVL), giving a single, interpretable differential-analysis statistic per region.</p>
+<p>The analysis runs in four steps: simulate or load the data, fit the kernel hyperparameters, compute one posterior per group, then compare the groups with a distance between posteriors (OVL or normalised Wasserstein).</p>
 <div class="section level2">
 <h2 id="when-to-use-bayesomics">When to use BayesOmics<a class="anchor" aria-label="anchor" href="#when-to-use-bayesomics"></a>
 </h2>
-<p>BayesOmics is designed for datasets where features are not independent but share a meaningful ordering or distance along some axis â€” genomic position, retention time, dose level, time point, m/z ratio, or any other continuous covariate. Classical per-feature tests (t-test, limma) ignore that structure and multiply the number of comparisons. BayesOmics instead models the whole region jointly: it fits a kernel over the feature axis to capture the correlation pattern, then derives one posterior profile per group and compares groups as complete multivariate objects via a single overlapping coefficient (OVL).</p>
+<p>BayesOmics is designed for datasets where features are not independent but share a meaningful ordering or distance along some axis — genomic position, retention time, dose level, time point, m/z ratio, or any other continuous covariate. Classical per-feature tests (t-test, limma) ignore that structure and multiply the number of comparisons. BayesOmics instead models the whole region jointly: it fits a kernel over the feature axis to capture the correlation pattern, then derives one posterior profile per group and compares groups as complete multivariate objects via a single overlapping coefficient (OVL).</p>
 <p>Typical use cases:</p>
 <ul>
 <li>
@@ -96,11 +109,30 @@
 <h2 id="key-assumptions">Key assumptions<a class="anchor" aria-label="anchor" href="#key-assumptions"></a>
 </h2>
 <ul>
-<li>Every group must be measured at the <strong>same set of Input values</strong> (same feature positions) so that groups share one kernel matrix and can be compared.</li>
+<li>Groups measured at the <strong>same set of Input values</strong> (same feature positions) share one kernel matrix, which allows the exact closed-form OVL; otherwise the OVL is estimated by Monte Carlo automatically.</li>
 <li>Within a group, every feature (<code>ID</code>) must have the <strong>same number of replicates</strong> (<code>Sample</code>).</li>
 <li>Groups being compared must cover the <strong>same set of IDs</strong>.Groups may have different numbers of replicates.</li>
 </ul>
-<p>See <code><a href="articles/troubleshooting.html">vignette("troubleshooting")</a></code> for the exact error raised when these conditions are not met.</p>
+<p>See <a href="https://terenceviellard.github.io/BayesOmics/articles/troubleshooting.html">Troubleshooting</a> for the exact error raised when these conditions are not met.</p>
+</div>
+<div class="section level2">
+<h2 id="explore-the-documentation">Explore the documentation<a class="anchor" aria-label="anchor" href="#explore-the-documentation"></a>
+</h2>
+<div class="row row-cols-2 row-cols-md-4 g-3 my-2">
+<div class="col d-flex">
+<p><a class="card w-100 p-3 text-decoration-none bo-card" href="https://terenceviellard.github.io/BayesOmics/articles/03_real_data.html"><img src="reference/figures/home-load.png" alt="Simulate or load"><strong>1 - Simulate or load</strong><br><small>Build the long-format table from a simulation or your data.</small></a></p>
+</div>
+<div class="col d-flex">
+<p><a class="card w-100 p-3 text-decoration-none bo-card" href="https://terenceviellard.github.io/BayesOmics/articles/08_kernel_choice.html"><img src="reference/figures/home-kernel.png" alt="Fit the kernel"><strong>2 - Fit the kernel</strong><br><small>Choose a kernel and learn its hyperparameters from the data.</small></a></p>
+</div>
+<div class="col d-flex">
+<p><a class="card w-100 p-3 text-decoration-none bo-card" href="https://terenceviellard.github.io/BayesOmics/articles/05_multi_group.html"><img src="reference/figures/home-compare.png" alt="Compare groups"><strong>3 - Compare groups</strong><br><small>Posteriors and distances between them, for two groups or many.</small></a></p>
+</div>
+<div class="col d-flex">
+<p><a class="card w-100 p-3 text-decoration-none bo-card" href="https://terenceviellard.github.io/BayesOmics/articles/gallery.html"><img src="reference/figures/home-visualize.png" alt="Visualize"><strong>4 - Visualize</strong><br><small>The key figures at a glance, each linking to its article.</small></a></p>
+</div>
+</div>
+<p>New to the model? Read <a href="https://terenceviellard.github.io/BayesOmics/articles/concepts.html">Concepts</a> first, then the <a href="https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.html">Basic pipeline</a>. The full function list is in the <a href="https://terenceviellard.github.io/BayesOmics/reference/index.html">Reference</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -116,42 +148,6 @@
 <p>CRAN dependencies: <code>mvtnorm</code>, <code>ggplot2</code>, <code>dplyr</code>, <code>gridExtra</code>.</p>
 </div>
 <div class="section level2">
-<h2 id="see-it-in-action">See it in action<a class="anchor" aria-label="anchor" href="#see-it-in-action"></a>
-</h2>
-<p>Five lines from raw data to posterior comparison:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">keRnel</span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://terenceviellard.github.io/BayesOmics/">BayesOmics</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
-<span><span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/simu_db.html">simu_db</a></span><span class="op">(</span>nb_id <span class="op">=</span> <span class="fl">25</span>, nb_group <span class="op">=</span> <span class="fl">4</span>, nb_sample <span class="op">=</span> <span class="fl">3</span>, diff_group <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">kern</span>         <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/keRnel/man/variance_kernel.html" class="external-link">variance_kernel</a></span><span class="op">(</span>variance <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/pkg/keRnel/man/se_kernel.html" class="external-link">se_kernel</a></span><span class="op">(</span>length_scale <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span><span class="va">control_data</span> <span class="op">&lt;-</span> <span class="va">data</span><span class="op">[</span><span class="va">data</span><span class="op">$</span><span class="va">Group</span> <span class="op">==</span> <span class="fl">1</span>, <span class="op">]</span></span>
-<span><span class="va">opt</span>          <span class="op">&lt;-</span> <span class="fu"><a href="reference/fit_kernel.html">fit_kernel</a></span><span class="op">(</span><span class="va">kern</span>, <span class="va">control_data</span>,</span>
-<span>                         prior_mean <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">control_data</span><span class="op">$</span><span class="va">Output</span><span class="op">)</span>, prior_cov <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span><span class="va">kern</span>         <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">kupdate</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">kern</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">as.list</a></span><span class="op">(</span><span class="va">opt</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">posterior</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/posterior_mean.html">posterior_mean</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">kern</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/group_diff.html">group_diff</a></span><span class="op">(</span><span class="va">posterior</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Metric: per_feature_metric(wasserstein_metric(), power = 0.5) </span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;           1         2         3         4</span></span>
-<span><span class="co">#&gt; 1  0.000000  6.031284 12.129416 17.615459</span></span>
-<span><span class="co">#&gt; 2  6.031284  0.000000  6.264025 11.704798</span></span>
-<span><span class="co">#&gt; 3 12.129416  6.264025  0.000000  5.600068</span></span>
-<span><span class="co">#&gt; 4 17.615459 11.704798  5.600068  0.000000</span></span>
-<span><span class="va">samples</span>   <span class="op">&lt;-</span> <span class="fu"><a href="reference/sample_posterior.html">sample_posterior</a></span><span class="op">(</span><span class="va">posterior</span>, n <span class="op">=</span> <span class="fl">2000</span><span class="op">)</span></span></code></pre></div>
-<p>Pairwise OVL between every group for one feature (lower = more differentiated):</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/plot_group_overlap_heatmap.html">plot_group_overlap_heatmap</a></span><span class="op">(</span><span class="va">samples</span>, id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">samples</span><span class="op">$</span><span class="va">ID</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
-<p><img src="reference/figures/README-unnamed-chunk-3-1.png" alt="" width="100%"></p>
-<p>Posterior mean at every feature, coloured by group:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/plot_posterior_mean.html">plot_posterior_mean</a></span><span class="op">(</span><span class="va">samples</span><span class="op">)</span></span></code></pre></div>
-<p><img src="reference/figures/README-unnamed-chunk-4-1.png" alt="" width="100%"></p>
-</div>
-<div class="section level2">
 <h2 id="go-further">Go further<a class="anchor" aria-label="anchor" href="#go-further"></a>
 </h2>
 <table class="table">
@@ -165,23 +161,19 @@
 </tr></thead>
 <tbody>
 <tr>
-<td><code><a href="articles/get-started.html">vignette("get-started")</a></code></td>
-<td>Data format, kernel choice, step-by-step pipeline, and basic plots â€” the right place to start.</td>
-</tr>
-<tr>
-<td><code><a href="articles/01_basic_pipeline.html">vignette("01_basic_pipeline")</a></code></td>
+<td><a href="https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.html">01 Basic pipeline</a></td>
 <td>The complete two-group walkthrough - kernel choice, hyperparameter fitting, posterior computation, <code><a href="reference/group_diff.html">group_diff()</a></code>.</td>
 </tr>
 <tr>
-<td><code><a href="articles/04_multi_group.html">vignette("04_multi_group")</a></code></td>
+<td><a href="https://terenceviellard.github.io/BayesOmics/articles/05_multi_group.html">05 More than two groups</a></td>
 <td>Reading a <code><a href="reference/group_diff.html">group_diff()</a></code> matrix and <code><a href="reference/plot_multi_diff.html">plot_multi_diff()</a></code> output for more than two groups (e.g. a dose-response design).</td>
 </tr>
 <tr>
-<td><code><a href="articles/07_unequal_sample_size.html">vignette("07_unequal_sample_size")</a></code></td>
+<td><a href="https://terenceviellard.github.io/BayesOmics/articles/07_unequal_sample_size.html">07 Unequal sample sizes</a></td>
 <td>How unbalanced designs affect posterior width and the OVL, and why the comparison remains valid with unequal sample sizes.</td>
 </tr>
 <tr>
-<td><code><a href="articles/troubleshooting.html">vignette("troubleshooting")</a></code></td>
+<td><a href="https://terenceviellard.github.io/BayesOmics/articles/troubleshooting.html">Troubleshooting</a></td>
 <td>Exact error messages you may encounter, what causes each of them, and the targeted fix.</td>
 </tr>
 </tbody>

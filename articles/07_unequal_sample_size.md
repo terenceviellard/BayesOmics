@@ -1,4 +1,4 @@
-# Comparing groups with different sample sizes
+# 07 · Comparing groups with different sample sizes
 
 ``` r
 
@@ -104,4 +104,7 @@ simulated effect places them.
 
 ## Related
 
-*Basic pipeline* – *Comparing more than two groups*.
+[Basic
+pipeline](https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.md)
+– [Comparing more than two
+groups](https://terenceviellard.github.io/BayesOmics/articles/05_multi_group.md).

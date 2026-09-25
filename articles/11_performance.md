@@ -1,0 +1,70 @@
+# 11 · Performance at a glance
+
+The cost of an analysis is driven by the number of features `d` in a
+group: fitting the kernel repeatedly factorises a `d x d` covariance
+matrix, which grows roughly with `d^3`. Measured once on a laptop, with
+two groups of eight replicates, a Squared Exponential plus noise kernel,
+and default optimiser settings:
+
+| Features `d` | [`fit_kernel()`](https://terenceviellard.github.io/BayesOmics/reference/fit_kernel.md) (one group) | [`posterior_mean()`](https://terenceviellard.github.io/BayesOmics/reference/posterior_mean.md) | Monolithic total | [`fit_block_posterior()`](https://terenceviellard.github.io/BayesOmics/reference/fit_block_posterior.md) total |
+|---:|---:|---:|---:|---:|
+| 25 | 0.23 s | 0.12 s | 0.35 s | 0.58 s |
+| 50 | 0.28 s | 0.13 s | 0.41 s | 0.94 s |
+| 100 | 0.64 s | 0.19 s | 0.83 s | 1.53 s |
+| 200 | 0.89 s | 0.28 s | 1.2 s | 2.7 s |
+| 400 | 3.7 s | 0.61 s | 4.3 s | 2.6 s |
+| 800 | 25.6 s | 1.1 s | 26.7 s | 4.8 s |
+| 1200 | 100.2 s | 2.3 s | 102.5 s | 9.0 s |
+
+Blocks hold about 25 features up to `d = 200` and about 100 beyond.
+
+## What to take from it
+
+- **Up to a few hundred features, stay monolithic.** Everything finishes
+  in seconds, and
+  [`posterior_mean()`](https://terenceviellard.github.io/BayesOmics/reference/posterior_mean.md)
+  keeps every cross-feature correlation. Block-diagonal fitting is even
+  slower here, because it pays for one fit per block.
+- **The kernel fit is the bottleneck, not the posterior.** From
+  `d = 400` the fit dominates;
+  [`posterior_mean()`](https://terenceviellard.github.io/BayesOmics/reference/posterior_mean.md)
+  stays cheap.
+- **Past roughly 300 to 400 features, split into blocks.** The gain
+  grows quickly (about 11x at `d = 1200`), at the price of ignoring
+  correlation between blocks. See [Block-diagonal
+  partition](https://terenceviellard.github.io/BayesOmics/articles/10_block_diagonal.md).
+
+## Reproduce it on your machine
+
+Timings depend on your hardware, so measure your own case:
+
+``` r
+
+library(keRnel)
+library(BayesOmics)
+
+d <- 400
+kern_true <- variance_kernel(variance = 10) * se_kernel(length_scale = 15)
+data <- simu_db_kernel(kernel = kern_true, nb_id = d, nb_group = 2, nb_sample = 8,
+                       diff_group = 0.8, var_sample = 5, range_input = c(0, 4 * d),
+                       integer_input = TRUE, input_grid = TRUE)
+kern <- variance_kernel(variance = 1) * se_kernel(length_scale = 50) +
+  white_noise_kernel(noise = 1)
+prior_mean <- mean(data$Output)
+
+system.time(
+  fit_kernel(kern, data[data$Group == unique(data$Group)[1], ],
+             prior_mean = prior_mean, prior_cov = 1)
+)
+system.time(
+  fit_block_posterior(data, partition_by_range(n_bins = d %/% 100), kern = kern,
+                      pooled = TRUE, prior_mean = prior_mean, prior_cov = 1)
+)
+```
+
+## Related
+
+[Basic
+pipeline](https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.md)
+– [Scaling up with a block-diagonal
+partition](https://terenceviellard.github.io/BayesOmics/articles/10_block_diagonal.md).

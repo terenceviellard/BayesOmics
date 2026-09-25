@@ -1,4 +1,4 @@
-# Univariate mode: comparing two groups with no feature axis
+# 02 · Univariate mode: comparing two groups with no feature axis
 
 ``` r
 
@@ -90,5 +90,7 @@ plot_posterior_overlap(samples, group1 = "Control", group2 = "Treatment",
 
 ## Related
 
-*Basic pipeline* (the general multi-feature case) – *Pooled
-vs. non-pooled fitting*.
+[Basic
+pipeline](https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.md)
+(the general multi-feature case) – [Pooled vs. non-pooled
+fitting](https://terenceviellard.github.io/BayesOmics/articles/04_pooled_vs_nonpooled.md).

@@ -73,10 +73,10 @@ simu_db_kernel(
   For `nb_dim > 1`, the kernel is evaluated directly on the
   `nb_id x nb_dim` matrix of positions (isotropic by default: a single
   shared `length_scale` across every dimension, unless `kernel` itself
-  is an [`ard_kernel()`](https://rdrr.io/pkg/keRnel/man/ard_kernel.html)
-  or similar). `range_input` is applied independently to every dimension
-  (each dimension's column of positions is drawn independently, not as
-  globally-distinct D-dimensional tuples).
+  is an `ard_kernel()` or similar). `range_input` is applied
+  independently to every dimension (each dimension's column of positions
+  is drawn independently, not as globally-distinct D-dimensional
+  tuples).
 
 - range_output:
 
