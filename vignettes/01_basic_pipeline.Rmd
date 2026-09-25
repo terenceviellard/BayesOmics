@@ -1,8 +1,9 @@
 ---
-title: "Basic pipeline: comparing two groups with a spatial kernel"
+title: "01 · Basic pipeline: comparing two groups with a spatial kernel"
+description: "The full two-group pipeline on simulated data: kernel, hyperparameter fit, posteriors, group comparison."
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Basic pipeline: comparing two groups with a spatial kernel}
+  %\VignetteIndexEntry{01 · Basic pipeline: comparing two groups with a spatial kernel}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -125,5 +126,4 @@ direction of effect on nearly every feature.
 
 ## Related
 
-*Univariate mode* (no covariate at all) -- *Pooled vs. non-pooled fitting*
-(one kernel per group) -- *Comparing more than two groups*.
+[Univariate mode](02_univariate.html) (no covariate at all) -- [Pooled vs. non-pooled fitting](04_pooled_vs_nonpooled.html) (one kernel per group) -- [Comparing more than two groups](05_multi_group.html).

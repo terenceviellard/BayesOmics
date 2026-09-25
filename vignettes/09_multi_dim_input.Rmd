@@ -1,8 +1,9 @@
 ---
-title: "Input with more than one dimension"
+title: "09 · Input with more than one dimension"
+description: "Features located by several covariates at once, and why the kernel factorizes on a grid."
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Input with more than one dimension}
+  %\VignetteIndexEntry{09 · Input with more than one dimension}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -119,4 +120,4 @@ across both dimensions, not just the first one.
 
 ## Related
 
-*Basic pipeline* -- *Using a kernel other than SE*.
+[Basic pipeline](01_basic_pipeline.html) -- [Using a kernel other than SE](08_kernel_choice.html).

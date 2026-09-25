@@ -1,8 +1,9 @@
 ---
-title: "Scaling up with a block-diagonal partition"
+title: "10 · Scaling up with a block-diagonal partition"
+description: "Split many features into independent blocks to fit and compare at scale."
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Scaling up with a block-diagonal partition}
+  %\VignetteIndexEntry{10 · Scaling up with a block-diagonal partition}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -109,4 +110,4 @@ ggplot2::ggplot(mat_df, ggplot2::aes(Row, Col, fill = Value)) +
 
 ## Related
 
-*Basic pipeline* -- *Comparing more than two groups*.
+[Basic pipeline](01_basic_pipeline.html) -- [Comparing more than two groups](05_multi_group.html) -- [Performance at a glance](11_performance.html).

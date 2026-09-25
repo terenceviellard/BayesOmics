@@ -1,8 +1,9 @@
 ---
-title: "Pooled vs. non-pooled: one kernel for every group, or one per group"
+title: "04 · Pooled vs. non-pooled: one kernel for every group, or one per group"
+description: "One shared kernel for every group, or one independent kernel per group: what changes."
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Pooled vs. non-pooled: one kernel for every group, or one per group}
+  %\VignetteIndexEntry{04 · Pooled vs. non-pooled: one kernel for every group, or one per group}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -119,4 +120,4 @@ ggplot(curve_df, aes(distance, covariance, color = Kernel)) +
 
 ## Related
 
-*Choice of metric: OVL vs. Wasserstein* -- *Basic pipeline*.
+[Choosing a metric: OVL vs. Wasserstein](06_metric_choice.html) -- [Basic pipeline](01_basic_pipeline.html).
