@@ -1,8 +1,9 @@
 ---
-title: "Comparing groups with different sample sizes"
+title: "07 · Comparing groups with different sample sizes"
+description: "Compare groups with different replicate counts and see how it affects posterior width."
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Comparing groups with different sample sizes}
+  %\VignetteIndexEntry{07 · Comparing groups with different sample sizes}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -98,4 +99,4 @@ simulated effect places them.
 
 ## Related
 
-*Basic pipeline* -- *Comparing more than two groups*.
+[Basic pipeline](01_basic_pipeline.html) -- [Comparing more than two groups](05_multi_group.html).

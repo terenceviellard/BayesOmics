@@ -8,3 +8,8 @@
 ^doc$
 ^Meta$
 ^optim_exploration$
+^_pkgdown\.yml$
+^pkgdown$
+^docs$
+^\.claude$
+^CITATION\.cff$

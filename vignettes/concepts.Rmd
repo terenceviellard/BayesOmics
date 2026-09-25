@@ -1,0 +1,112 @@
+---
+title: "Concepts: the model in one page"
+description: "What BayesOmics models, how the kernel enters, and what comparing two posteriors means."
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Concepts: the model in one page}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+This page gives the intuition behind every function in the package, with no
+code. Each section ends with a pointer to the article that shows it in
+practice.
+
+## The question
+
+You measured the same features (genomic positions, days, proteins...) in
+two or more experimental groups, with several replicates per group. You want
+to know, feature by feature or as a whole, **how different the groups are**,
+with an honest account of the uncertainty that few replicates leave.
+
+## Data: one row per observation
+
+Every analysis starts from a long table with five columns: `ID` (the
+feature), `Group`, `Sample` (the replicate), `Input` (a numeric position for
+the feature) and `Output` (the measurement). `Input` is what gives the
+features a geometry: two features with close `Input` values are expected to
+behave alike.
+See [Basic pipeline](01_basic_pipeline.html) and
+[Real data](03_real_data.html).
+
+## The kernel: encoding "close features behave alike"
+
+A **kernel** is a function `k(x, x')` returning how strongly two features at
+positions `x` and `x'` co-vary. A Squared Exponential kernel says the
+correlation decays smoothly with distance, at a rate set by its
+*length scale*; adding a *noise* term accounts for measurement noise, and a
+*variance* term sets the overall amplitude. These few numbers are the
+**hyperparameters**, and they are learned from the data by maximum
+likelihood (`fit_kernel()`), not chosen by hand.
+See [Kernel choice](08_kernel_choice.html).
+
+## The posterior: what we believe about each group
+
+With the kernel fixed, each group gets a **posterior distribution** over
+its vector of feature values: a mean (the smoothed, replicate-averaged
+profile) and a covariance (how uncertain each feature is, and how
+uncertainties are tied together). Fewer replicates give a wider posterior;
+a shared kernel means groups are described by the same notion of closeness.
+`posterior_mean()` computes this in closed form.
+See [Pooled vs. non-pooled](04_pooled_vs_nonpooled.html) and
+[Unequal sample sizes](07_unequal_sample_size.html).
+
+## Comparing groups: a distance between posteriors
+
+Comparing two groups means comparing two Gaussian posteriors. Two summaries
+cover most needs:
+
+- the **overlapping coefficient (OVL)**: the share of probability mass the
+  two posteriors have in common, from 0 (disjoint) to 1 (identical);
+- the **Wasserstein distance**, a distance in the units of the data, which
+  we normalise per feature so that it does not grow with the number of
+  features.
+
+OVL is intuitive but saturates near 0 once many features are compared
+jointly; the normalised Wasserstein stays readable. `group_diff()` picks
+between them for you from the number of features.
+See [Choosing a metric](06_metric_choice.html) and
+[More than two groups](05_multi_group.html).
+
+## Scale: when there are many features
+
+The posterior involves a covariance matrix as large as the number of
+features, and inverting it becomes costly. **Block-diagonal** fitting
+splits the features into independent blocks, trading a little cross-block
+correlation for a much smaller problem per block.
+See [Block-diagonal partition](10_block_diagonal.html) and
+[Performance at a glance](11_performance.html).
+
+## Assumptions to keep in mind
+
+- Within a group, each feature sits at one `Input` position (or one
+  position per dimension), and every group being compared shares the same
+  set of features.
+- Replicates of a feature within a group are exchangeable: the model has no
+  built-in notion of pairing or batch.
+- Posteriors are Gaussian: the model targets continuous, roughly symmetric
+  measurements (transform counts or proportions first when needed).
+
+## Glossary
+
+| Term | Meaning |
+|---|---|
+| `ID` | Identifier of a feature (position, protein, day...) |
+| `Input` | Numeric location of a feature; drives the kernel |
+| `Input_ID` | Index of the dimension when `Input` has several |
+| Kernel | Function giving the covariance of two features from their positions |
+| Hyperparameters | Kernel parameters (variance, length scale, noise) fitted from the data |
+| Posterior | Distribution of a group's feature vector given the data |
+| `pooled` | `TRUE`: one kernel for all groups; `FALSE`: one per group |
+| OVL | Overlapping coefficient between two posteriors, in `[0, 1]` |
+| Wasserstein | Distance between two posteriors, in the data's units |
+| Block | Subset of features fitted independently of the others |
+
+## Where next
+
+New to the package? Start with [Basic pipeline](01_basic_pipeline.html).
+Something failing? See [Troubleshooting](troubleshooting.html).

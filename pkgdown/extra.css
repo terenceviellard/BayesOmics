@@ -1,0 +1,4 @@
+a.bo-card { color: inherit; transition: box-shadow .15s, transform .15s, border-color .15s; }
+a.bo-card:hover { border-color: var(--bs-primary); box-shadow: 0 .35rem .9rem rgba(94, 114, 164, .25); transform: translateY(-2px); }
+a.bo-card strong { color: var(--bs-primary); }
+a.bo-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: #fff; border-radius: .25rem; margin-bottom: .6rem; border: 1px solid rgba(0, 0, 0, .08); }.col.d-flex > p { display: flex; width: 100%; margin: 0; }
