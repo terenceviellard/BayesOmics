@@ -1,8 +1,9 @@
 ---
-title: "Choosing a metric: OVL vs. Wasserstein"
+title: "06 · Choosing a metric: OVL vs. Wasserstein"
+description: "Why the joint OVL saturates as features grow, and when to use per-feature Wasserstein."
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Choosing a metric: OVL vs. Wasserstein}
+  %\VignetteIndexEntry{06 · Choosing a metric: OVL vs. Wasserstein}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -60,7 +61,7 @@ not a closed-form population computation) at `nb_id` from 2 to 150, each
 point averaged over 10 simulations:
 
 ```{r, echo = FALSE, out.width = "100%", fig.alt = "Same per-feature effect (0.8), growing feature count."}
-knitr::include_graphics("figures/05_metric_choice_curve.png")
+knitr::include_graphics("figures/06_metric_choice_curve.png")
 ```
 
 OVL collapses toward 0 within the first ~30 features; the renormalized Wasserstein settles into a stable band around 1.3-1.4 for every feature count above that.
@@ -101,5 +102,4 @@ threshold itself.
 
 ## Related
 
-*Basic pipeline* -- *Pooled vs. non-pooled fitting* (which metrics remain
-valid when kernels are not shared).
+[Basic pipeline](01_basic_pipeline.html) -- [Pooled vs. non-pooled fitting](04_pooled_vs_nonpooled.html) (which metrics remain valid when kernels are not shared).

@@ -10,18 +10,21 @@
 
 BayesOmics is an R package for Bayesian differential analysis of omics
 data. It places a kernel over the feature dimension (genomic position,
-mass-to-charge ratio, retention time, â€¦) to capture correlation
+mass-to-charge ratio, retention time, …) to capture correlation
 structure, fits that kernel by maximum likelihood, and computes a
 posterior profile per group. Groups are then compared as complete
 multivariate profiles via an overlapping coefficient (OVL), giving a
 single, interpretable differential-analysis statistic per region.
 
-<img src="man/figures/pipeline.png" alt="BayesOmics pipeline: simulate/load data, optimize kernel hyperparameters, compute posterior per group, differential analysis (OVL)" width="100%" />
+The analysis runs in four steps: simulate or load the data, fit the
+kernel hyperparameters, compute one posterior per group, then compare
+the groups with a distance between posteriors (OVL or normalised
+Wasserstein).
 
 ## When to use BayesOmics
 
 BayesOmics is designed for datasets where features are not independent
-but share a meaningful ordering or distance along some axis â€” genomic
+but share a meaningful ordering or distance along some axis — genomic
 position, retention time, dose level, time point, m/z ratio, or any
 other continuous covariate. Classical per-feature tests (t-test, limma)
 ignore that structure and multiply the number of comparisons. BayesOmics
@@ -41,16 +44,62 @@ Typical use cases:
 
 ## Key assumptions
 
-- Every group must be measured at the **same set of Input values** (same
-  feature positions) so that groups share one kernel matrix and can be
-  compared.
+- Groups measured at the **same set of Input values** (same feature
+  positions) share one kernel matrix, which allows the exact closed-form
+  OVL; otherwise the OVL is estimated by Monte Carlo automatically.
 - Within a group, every feature (`ID`) must have the **same number of
   replicates** (`Sample`).
 - Groups being compared must cover the **same set of IDs**.Groups may
   have different numbers of replicates.
 
-See `vignette("troubleshooting")` for the exact error raised when these
-conditions are not met.
+See
+[Troubleshooting](https://terenceviellard.github.io/BayesOmics/articles/troubleshooting.html)
+for the exact error raised when these conditions are not met.
+
+## Explore the documentation
+
+<div class="row row-cols-2 row-cols-md-4 g-3 my-2">
+
+<div class="col d-flex">
+
+<a class="card w-100 p-3 text-decoration-none bo-card" href="https://terenceviellard.github.io/BayesOmics/articles/03_real_data.html"><img src="man/figures/home-load.png" alt="Simulate or load"><strong>1 -
+Simulate or load</strong><br><small>Build the long-format table from a
+simulation or your data.</small></a>
+
+</div>
+
+<div class="col d-flex">
+
+<a class="card w-100 p-3 text-decoration-none bo-card" href="https://terenceviellard.github.io/BayesOmics/articles/08_kernel_choice.html"><img src="man/figures/home-kernel.png" alt="Fit the kernel"><strong>2 -
+Fit the kernel</strong><br><small>Choose a kernel and learn its
+hyperparameters from the data.</small></a>
+
+</div>
+
+<div class="col d-flex">
+
+<a class="card w-100 p-3 text-decoration-none bo-card" href="https://terenceviellard.github.io/BayesOmics/articles/05_multi_group.html"><img src="man/figures/home-compare.png" alt="Compare groups"><strong>3 -
+Compare groups</strong><br><small>Posteriors and distances between them,
+for two groups or many.</small></a>
+
+</div>
+
+<div class="col d-flex">
+
+<a class="card w-100 p-3 text-decoration-none bo-card" href="https://terenceviellard.github.io/BayesOmics/articles/gallery.html"><img src="man/figures/home-visualize.png" alt="Visualize"><strong>4 -
+Visualize</strong><br><small>The key figures at a glance, each linking
+to its article.</small></a>
+
+</div>
+
+</div>
+
+New to the model? Read
+[Concepts](https://terenceviellard.github.io/BayesOmics/articles/concepts.html)
+first, then the [Basic
+pipeline](https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.html).
+The full function list is in the
+[Reference](https://terenceviellard.github.io/BayesOmics/reference/index.html).
 
 ## Installation
 
@@ -69,58 +118,11 @@ Both packages are installed together via
 
 CRAN dependencies: `mvtnorm`, `ggplot2`, `dplyr`, `gridExtra`.
 
-## See it in action
-
-Five lines from raw data to posterior comparison:
-
-``` r
-library(keRnel)
-library(BayesOmics)
-
-set.seed(42)
-data <- simu_db(nb_id = 25, nb_group = 4, nb_sample = 3, diff_group = 8)
-
-kern         <- variance_kernel(variance = 1) * se_kernel(length_scale = 1)
-control_data <- data[data$Group == 1, ]
-opt          <- fit_kernel(kern, control_data,
-                         prior_mean = mean(control_data$Output), prior_cov = 1)
-kern         <- do.call(kupdate, c(list(kern), as.list(opt)))
-
-posterior <- posterior_mean(data, kern)
-group_diff(posterior)
-#> Metric: per_feature_metric(wasserstein_metric(), power = 0.5) 
-#> 
-#>           1         2         3         4
-#> 1  0.000000  6.031284 12.129416 17.615459
-#> 2  6.031284  0.000000  6.264025 11.704798
-#> 3 12.129416  6.264025  0.000000  5.600068
-#> 4 17.615459 11.704798  5.600068  0.000000
-samples   <- sample_posterior(posterior, n = 2000)
-```
-
-Pairwise OVL between every group for one feature (lower = more
-differentiated):
-
-``` r
-plot_group_overlap_heatmap(samples, id = unique(samples$ID)[1])
-```
-
-<img src="man/figures/README-unnamed-chunk-3-1.png" alt="" width="100%" />
-
-Posterior mean at every feature, coloured by group:
-
-``` r
-plot_posterior_mean(samples)
-```
-
-<img src="man/figures/README-unnamed-chunk-4-1.png" alt="" width="100%" />
-
 ## Go further
 
 | Vignette | What you will find |
 |----|----|
-| `vignette("get-started")` | Data format, kernel choice, step-by-step pipeline, and basic plots â€” the right place to start. |
-| `vignette("01_basic_pipeline")` | The complete two-group walkthrough - kernel choice, hyperparameter fitting, posterior computation, `group_diff()`. |
-| `vignette("04_multi_group")` | Reading a `group_diff()` matrix and `plot_multi_diff()` output for more than two groups (e.g. a dose-response design). |
-| `vignette("07_unequal_sample_size")` | How unbalanced designs affect posterior width and the OVL, and why the comparison remains valid with unequal sample sizes. |
-| `vignette("troubleshooting")` | Exact error messages you may encounter, what causes each of them, and the targeted fix. |
+| [01 Basic pipeline](https://terenceviellard.github.io/BayesOmics/articles/01_basic_pipeline.html) | The complete two-group walkthrough - kernel choice, hyperparameter fitting, posterior computation, `group_diff()`. |
+| [05 More than two groups](https://terenceviellard.github.io/BayesOmics/articles/05_multi_group.html) | Reading a `group_diff()` matrix and `plot_multi_diff()` output for more than two groups (e.g. a dose-response design). |
+| [07 Unequal sample sizes](https://terenceviellard.github.io/BayesOmics/articles/07_unequal_sample_size.html) | How unbalanced designs affect posterior width and the OVL, and why the comparison remains valid with unequal sample sizes. |
+| [Troubleshooting](https://terenceviellard.github.io/BayesOmics/articles/troubleshooting.html) | Exact error messages you may encounter, what causes each of them, and the targeted fix. |
