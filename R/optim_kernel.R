@@ -374,6 +374,93 @@ aligned_output <- function(sub, row_order) {
 
 #' @noRd
 #'
+#' @details Everything `sum_logGaussian()`/`gr_sum_logGaussian()` derive from
+#'   `db` alone (never from the hyperparameters) is computed here, ONCE per
+#'   optimization run: the normalized `db`, the input-position matrix, the
+#'   replicate structure, and -- for a replicated design -- the
+#'   `n_replicates x p` matrix `Y` of outputs aligned on the position order
+#'   (one row per Group x Sample). Before this helper existed, every objective
+#'   and gradient evaluation redid all of it (a `db[...]` subset plus a
+#'   `dplyr::distinct()` per replicate), which cost ~1 ms per replicate per
+#'   call and dominated the whole fit (>95 % of the time at p <= 65) while the
+#'   actual linear algebra took well under 1 ms. The two likelihood functions
+#'   build it on demand when `prep = NULL`, so direct callers are unchanged.
+#'
+#'   Returns `list(db, n_dim, is_replicated, input_mat, p, Y, output)`;
+#'   `Y` is set only when `is_replicated`, `output` (the aligned Output
+#'   vector) only for a multi-dimensional, non-replicated design.
+prep_likelihood_data <- function(db) {
+  db    <- normalize_input_cols(db)
+  n_dim <- length(unique(db$Input_ID))
+  out   <- list(db = db, n_dim = n_dim, is_replicated = FALSE,
+                input_mat = NULL, p = NULL, Y = NULL, output = NULL)
+
+  grp_of <- function() {
+    if ("Group" %in% names(db)) interaction(db$Group, db$Sample, drop = TRUE) else db$Sample
+  }
+  stack_rows <- function(reps, grp, align) {
+    do.call(rbind, lapply(reps, function(gs) align(db[grp == gs, ])))
+  }
+
+  if (n_dim == 1) {
+    unique_inputs <- sort(unique(db$Input))
+    p             <- length(unique_inputs)
+    out$p         <- p
+    if ("Sample" %in% names(db) && nrow(db) > p) {
+      grp <- grp_of()
+      out$is_replicated <- all(table(grp) == p)
+    }
+    if (out$is_replicated) {
+      out$input_mat <- as.matrix(unique_inputs)
+      out$Y <- stack_rows(levels(grp), grp, function(sub) sub$Output[order(sub$Input)])
+    }
+  } else {
+    if (!("ID" %in% names(db))) {
+      stop(
+        "Multi-dimensional Input (more than one distinct Input_ID) requires ",
+        "an 'ID' column to group each observation's Input_ID rows."
+      )
+    }
+    input_mat <- input_matrix_by_id(
+      dplyr::distinct(db, .data$ID, .data$Input_ID, .data$Input),
+      key_cols = "ID"
+    )$matrix
+    p   <- nrow(input_mat)
+    out$input_mat <- input_mat
+    out$p         <- p
+
+    if ("Sample" %in% names(db)) {
+      grp         <- grp_of()
+      replicates  <- levels(factor(grp))
+      obs_per_rep <- vapply(replicates, function(gs) dplyr::n_distinct(db$ID[grp == gs]), integer(1))
+      out$is_replicated <- length(replicates) > 1 && all(obs_per_rep == p)
+    }
+    if (out$is_replicated) {
+      out$Y <- stack_rows(replicates, grp, function(sub) aligned_output(sub, rownames(input_mat)))
+    } else {
+      out$output <- tryCatch(aligned_output(db, rownames(input_mat)), error = function(e) NULL)
+    }
+  }
+  out
+}
+
+#' @noRd
+#'
+#' @details Sum over the rows of `Y` (one replicate each) of
+#'   `dmnorm(y_s, mean_vec, inv, log = TRUE)`, in one pass:
+#'   `-0.5 * (n_s * (p * log(2 pi) + log|Sigma|) + sum_s z_s' inv z_s)`, with
+#'   `inv = Sigma^-1`. Numerically identical to the per-replicate loop (checked
+#'   in `test-optim_kernel.R`).
+replicated_loglik <- function(Y, mean_vec, inv) {
+  n_s <- nrow(Y)
+  p   <- ncol(Y)
+  Z   <- sweep(Y, 2, mean_vec)
+  logdet_sigma <- -as.numeric(determinant(inv, logarithm = TRUE)$modulus)
+  -0.5 * (n_s * (p * log(2 * pi) + logdet_sigma) + sum((Z %*% inv) * Z))
+}
+
+#' @noRd
+#'
 #' @details If `cache` is a (single, fresh-per-optimization-run) environment,
 #'   the kernel covariance and its inverse are memoized by `free`: since
 #'   `fit_kernel()`'s objective and gradient are evaluated at the same
@@ -412,25 +499,20 @@ aligned_output <- function(sub, row_order) {
 #'   correction's derivation assumes a well-defined shared p x p Sigma'_theta
 #'   reused identically across every replicate.
 sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, cache = NULL,
-                            trace_log = NULL, t0 = NULL, n_groups = NULL) {
+                            trace_log = NULL, t0 = NULL, n_groups = NULL, prep = NULL) {
   kern <- keRnel::set_free_params(kern, free)
-  db   <- normalize_input_cols(db)
-  n_dim <- length(unique(db$Input_ID))
+  if (is.null(prep)) prep <- prep_likelihood_data(db)
+  db    <- prep$db
+  n_dim <- prep$n_dim
 
   if (n_dim == 1) {
     # -- D = 1: legacy scalar-Input logic, unchanged --------------------------
     unique_inputs <- sort(unique(db$Input))
     p             <- length(unique_inputs)
-    is_replicated <- FALSE
-    if ("Sample" %in% names(db) && nrow(db) > p) {
-      grp_sample_id <- if ("Group" %in% names(db))
-        interaction(db$Group, db$Sample, drop = TRUE) else db$Sample
-      sample_counts <- table(grp_sample_id)
-      is_replicated <- all(sample_counts == p)
-    }
+    is_replicated <- prep$is_replicated
 
     if (is_replicated) {
-      input_mat <- as.matrix(unique_inputs)
+      input_mat <- prep$input_mat
 
       inv <- cached_cov_inv(cache, free, function() {
         cov <- keRnel::evaluate(kern, input_mat, input_mat)
@@ -440,15 +522,7 @@ sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, cac
 
       mean_vec <- if (length(prior_mean) == 1) rep(prior_mean, p) else prior_mean
 
-      grp_sample_id <- if ("Group" %in% names(db))
-        interaction(db$Group, db$Sample, drop = TRUE) else db$Sample
-      replicates <- levels(grp_sample_id)
-      log_lik <- 0
-      for (gs in replicates) {
-        sub <- db[grp_sample_id == gs, ]
-        y_s <- sub$Output[order(sub$Input)]
-        log_lik <- log_lik + dmnorm(y_s, mean_vec, inv, log = TRUE)
-      }
+      log_lik <- replicated_loglik(prep$Y, mean_vec, inv)
       neg_sum_log_likelihood <- -log_lik
 
       if (!is.null(n_groups)) {
@@ -488,31 +562,9 @@ sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, cac
 
   } else {
     # -- D > 1: multi-dimensional Input, generalized over the same logic -----
-    if (!("ID" %in% names(db))) {
-      stop(
-        "Multi-dimensional Input (more than one distinct Input_ID) requires ",
-        "an 'ID' column to group each observation's Input_ID rows."
-      )
-    }
-    positions <- input_matrix_by_id(
-      dplyr::distinct(db, .data$ID, .data$Input_ID, .data$Input),
-      key_cols = "ID"
-    )
-    input_mat <- positions$matrix
-    p         <- nrow(input_mat)
-
-    grp_sample_id <- if ("Sample" %in% names(db)) {
-      if ("Group" %in% names(db)) interaction(db$Group, db$Sample, drop = TRUE) else db$Sample
-    } else {
-      NULL
-    }
-    replicates    <- if (!is.null(grp_sample_id)) levels(factor(grp_sample_id)) else NULL
-    obs_per_rep   <- if (!is.null(replicates)) {
-      vapply(replicates, function(gs) dplyr::n_distinct(db$ID[grp_sample_id == gs]), integer(1))
-    } else {
-      integer(0)
-    }
-    is_replicated <- length(replicates) > 1 && all(obs_per_rep == p)
+    input_mat     <- prep$input_mat
+    p             <- prep$p
+    is_replicated <- prep$is_replicated
 
     if (is_replicated) {
       inv <- cached_cov_inv(cache, free, function() {
@@ -523,12 +575,7 @@ sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, cac
 
       mean_vec <- if (length(prior_mean) == 1) rep(prior_mean, p) else prior_mean
 
-      log_lik <- 0
-      for (gs in replicates) {
-        sub <- db[grp_sample_id == gs, ]
-        y_s <- aligned_output(sub, rownames(input_mat))
-        log_lik <- log_lik + dmnorm(y_s, mean_vec, inv, log = TRUE)
-      }
+      log_lik <- replicated_loglik(prep$Y, mean_vec, inv)
       neg_sum_log_likelihood <- -log_lik
 
       if (!is.null(n_groups)) {
@@ -561,7 +608,7 @@ sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, cac
         }
       }
 
-      output <- aligned_output(db, rownames(input_mat))
+      output <- if (is.null(prep$output)) aligned_output(db, rownames(input_mat)) else prep$output
       neg_sum_log_likelihood <- -sum(dmnorm(output, mean_vec, inv, log = TRUE))
     }
   }
@@ -599,25 +646,20 @@ sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, cac
 #'   cancelling) -- see `dev/optim_exploration/11_reml_group_gradient_check.R`
 #'   for the finite-difference verification of this term specifically.
 gr_sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, cache = NULL,
-                               trace_log = NULL, t0 = NULL, n_groups = NULL) {
+                               trace_log = NULL, t0 = NULL, n_groups = NULL, prep = NULL) {
   kern  <- keRnel::set_free_params(kern, free)
-  db    <- normalize_input_cols(db)
-  n_dim <- length(unique(db$Input_ID))
+  if (is.null(prep)) prep <- prep_likelihood_data(db)
+  db    <- prep$db
+  n_dim <- prep$n_dim
 
   if (n_dim == 1) {
     # -- D = 1: legacy scalar-Input logic ------------------------------------
     unique_inputs <- sort(unique(db$Input))
     p             <- length(unique_inputs)
-    is_replicated <- FALSE
-    if ("Sample" %in% names(db) && nrow(db) > p) {
-      grp_sample_id <- if ("Group" %in% names(db))
-        interaction(db$Group, db$Sample, drop = TRUE) else db$Sample
-      sample_counts <- table(grp_sample_id)
-      is_replicated <- all(sample_counts == p)
-    }
+    is_replicated <- prep$is_replicated
 
     if (is_replicated) {
-      input_mat <- as.matrix(unique_inputs)
+      input_mat <- prep$input_mat
 
       inv <- cached_cov_inv(cache, free, function() {
         cov <- keRnel::evaluate(kern, input_mat, input_mat)
@@ -626,18 +668,9 @@ gr_sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, 
       })
 
       mean_vec <- if (length(prior_mean) == 1) rep(prior_mean, p) else prior_mean
-      grp_sample_id <- if ("Group" %in% names(db))
-        interaction(db$Group, db$Sample, drop = TRUE) else db$Sample
-      replicates <- levels(grp_sample_id)
-      n_s        <- length(replicates)
-
-      outer_sum <- matrix(0, p, p)
-      for (gs in replicates) {
-        sub  <- db[grp_sample_id == gs, ]
-        y_s  <- sub$Output[order(sub$Input)]
-        r_s  <- inv %*% (y_s - mean_vec)
-        outer_sum <- outer_sum + r_s %*% t(r_s)
-      }
+      n_s       <- nrow(prep$Y)
+      R         <- sweep(prep$Y, 2, mean_vec) %*% t(inv)   # row s = (inv %*% (y_s - mean))'
+      outer_sum <- crossprod(R)
       common_term <- outer_sum - n_s * inv
       if (!is.null(n_groups)) {
         common_term <- common_term + n_groups * inv
@@ -676,31 +709,9 @@ gr_sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, 
 
   } else {
     # -- D > 1: multi-dimensional Input ---------------------------------------
-    if (!("ID" %in% names(db))) {
-      stop(
-        "Multi-dimensional Input (more than one distinct Input_ID) requires ",
-        "an 'ID' column to group each observation's Input_ID rows."
-      )
-    }
-    positions <- input_matrix_by_id(
-      dplyr::distinct(db, .data$ID, .data$Input_ID, .data$Input),
-      key_cols = "ID"
-    )
-    input_mat <- positions$matrix
-    p         <- nrow(input_mat)
-
-    grp_sample_id <- if ("Sample" %in% names(db)) {
-      if ("Group" %in% names(db)) interaction(db$Group, db$Sample, drop = TRUE) else db$Sample
-    } else {
-      NULL
-    }
-    replicates  <- if (!is.null(grp_sample_id)) levels(factor(grp_sample_id)) else NULL
-    obs_per_rep <- if (!is.null(replicates)) {
-      vapply(replicates, function(gs) dplyr::n_distinct(db$ID[grp_sample_id == gs]), integer(1))
-    } else {
-      integer(0)
-    }
-    is_replicated <- length(replicates) > 1 && all(obs_per_rep == p)
+    input_mat     <- prep$input_mat
+    p             <- prep$p
+    is_replicated <- prep$is_replicated
 
     if (is_replicated) {
       inv <- cached_cov_inv(cache, free, function() {
@@ -710,15 +721,10 @@ gr_sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, 
       })
 
       mean_vec <- if (length(prior_mean) == 1) rep(prior_mean, p) else prior_mean
-      n_s      <- length(replicates)
+      n_s      <- nrow(prep$Y)
 
-      outer_sum <- matrix(0, p, p)
-      for (gs in replicates) {
-        sub <- db[grp_sample_id == gs, ]
-        y_s <- aligned_output(sub, rownames(input_mat))
-        r_s <- inv %*% (y_s - mean_vec)
-        outer_sum <- outer_sum + r_s %*% t(r_s)
-      }
+      R         <- sweep(prep$Y, 2, mean_vec) %*% t(inv)
+      outer_sum <- crossprod(R)
       common_term <- outer_sum - n_s * inv
       if (!is.null(n_groups)) {
         common_term <- common_term + n_groups * inv
@@ -744,7 +750,7 @@ gr_sum_logGaussian <- function(free, db, prior_mean, kern, prior_cov, pen_diag, 
       })
 
       mean_vec <- if (length(prior_mean) == 1) rep(prior_mean, n) else prior_mean
-      output   <- aligned_output(db, rownames(input_mat))
+      output   <- if (is.null(prep$output)) aligned_output(db, rownames(input_mat)) else prep$output
 
       prod_inv    <- inv %*% (output - mean_vec)
       common_term <- prod_inv %*% t(prod_inv) - inv
@@ -1023,6 +1029,10 @@ fit_kernel <- function(kern = NULL, db, prior_mean = NULL, prior_cov,
   # both at the same free-space point (the common case).
   cov_cache <- new.env(parent = emptyenv())
 
+  # Everything derived from `db` alone (aligned outputs, position matrix,
+  # replicate structure) is computed once here, not at every evaluation.
+  prep <- prep_likelihood_data(db)
+
   # trace_log stays NULL (and record_trace() no-ops) when track_trace = FALSE,
   # so the default path costs nothing beyond this one check per evaluation.
   trace_log <- if (track_trace) list2env(list(rows = list()), parent = emptyenv()) else NULL
@@ -1030,12 +1040,12 @@ fit_kernel <- function(kern = NULL, db, prior_mean = NULL, prior_cov,
 
   objective <- function(free) {
     sum_logGaussian(free, db, prior_mean, kern, prior_cov, pen_diag, cache = cov_cache,
-                     trace_log = trace_log, t0 = t0, n_groups = n_groups)
+                     trace_log = trace_log, t0 = t0, n_groups = n_groups, prep = prep)
   }
 
   gradient <- function(free) {
     gr_sum_logGaussian(free, db, prior_mean, kern, prior_cov, pen_diag, cache = cov_cache,
-                        trace_log = trace_log, t0 = t0, n_groups = n_groups)
+                        trace_log = trace_log, t0 = t0, n_groups = n_groups, prep = prep)
   }
 
   free0 <- keRnel::get_free_params(kern)

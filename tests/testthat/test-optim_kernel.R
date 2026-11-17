@@ -1045,3 +1045,61 @@ test_that("fit_kernel errors when both ID and Input are supplied for kern = NULL
 test_that("fit_kernel(kern = NULL) still requires Group and Output columns", {
   expect_error(fit_kernel(NULL, data.frame(x = 1:5), pooled = TRUE), "Group")
 })
+
+# -- Precomputed likelihood data (prep_likelihood_data / replicated_loglik) -------
+
+test_that("replicated_loglik equals the per-replicate dmnorm loop", {
+  set.seed(71)
+  p <- 7; n_s <- 5
+  A <- crossprod(matrix(rnorm(p * p), p)) + diag(p)
+  inv <- chol2inv(chol(A))
+  Y <- matrix(rnorm(n_s * p, 3), n_s, p)
+  mu <- rnorm(p)
+  loop <- sum(vapply(seq_len(n_s), function(s) BayesOmics:::dmnorm(Y[s, ], mu, inv, log = TRUE), numeric(1)))
+  expect_equal(BayesOmics:::replicated_loglik(Y, mu, inv), loop, tolerance = 1e-12)
+})
+
+test_that("objective and gradient are identical with and without a precomputed prep (D = 1, replicated)", {
+  set.seed(72)
+  kern_true <- keRnel::variance_kernel(variance = 2) * keRnel::se_kernel(length_scale = 2)
+  data <- simu_db_kernel(nb_id = 6, nb_group = 3, nb_sample = 4, diff_group = 0, var_sample = 1, kernel = kern_true)
+  kern <- make_kernel(hp = c(1.5, 2.0))
+  free <- keRnel::get_free_params(kern)
+  prep <- BayesOmics:::prep_likelihood_data(data)
+  expect_true(prep$is_replicated)
+  for (ng in list(NULL, 3)) {
+    expect_equal(BayesOmics:::sum_logGaussian(free, data, 0, kern, 1, 1e-6, n_groups = ng, prep = prep),
+                 BayesOmics:::sum_logGaussian(free, data, 0, kern, 1, 1e-6, n_groups = ng), tolerance = 1e-12)
+    expect_equal(BayesOmics:::gr_sum_logGaussian(free, data, 0, kern, 1, 1e-6, n_groups = ng, prep = prep),
+                 BayesOmics:::gr_sum_logGaussian(free, data, 0, kern, 1, 1e-6, n_groups = ng), tolerance = 1e-12)
+  }
+})
+
+test_that("objective matches the legacy per-replicate loop on a replicated multi-dimensional design (D = 2, REML)", {
+  set.seed(73)
+  ids  <- paste0("ID_", 1:6)
+  base <- data.frame(ID = ids, dim1 = seq(0, 10, length.out = 6), dim2 = seq(5, 0, length.out = 6))
+  long <- do.call(rbind, lapply(seq_len(4), function(s) {
+    y <- rnorm(6, mean = base$dim1)
+    rbind(data.frame(ID = ids, Sample = s, Input_ID = 1, Input = base$dim1, Output = y),
+          data.frame(ID = ids, Sample = s, Input_ID = 2, Input = base$dim2, Output = y))
+  }))
+  kern <- keRnel::variance_kernel(variance = 1.5) * keRnel::se_kernel(length_scale = 2.5)
+  free <- keRnel::get_free_params(kern)
+  prep <- BayesOmics:::prep_likelihood_data(long)
+  expect_true(prep$is_replicated)
+  expect_equal(dim(prep$Y), c(4, 6))
+
+  # reference: the formula as it was before the refactor (loop of dmnorm + REML term)
+  im  <- prep$input_mat
+  inv <- BayesOmics:::chol_inv_jitter(keRnel::evaluate(keRnel::set_free_params(kern, free), im, im) +
+                                        BayesOmics:::resolve_prior_cov(1, nrow(im)), pen_diag = 1e-6)
+  ll  <- 0
+  for (s in unique(long$Sample)) {
+    y_s <- BayesOmics:::aligned_output(long[long$Sample == s, ], rownames(im))
+    ll  <- ll + BayesOmics:::dmnorm(y_s, rep(0, nrow(im)), inv, log = TRUE)
+  }
+  ref <- -ll + (2 / 2) * as.numeric(determinant(inv, logarithm = TRUE)$modulus)
+  expect_equal(BayesOmics:::sum_logGaussian(free, long, 0, kern, 1, 1e-6, n_groups = 2, prep = prep), ref, tolerance = 1e-10)
+  expect_equal(BayesOmics:::sum_logGaussian(free, long, 0, kern, 1, 1e-6, n_groups = 2), ref, tolerance = 1e-10)
+})
